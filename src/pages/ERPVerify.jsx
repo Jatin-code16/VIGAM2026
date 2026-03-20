@@ -16,56 +16,63 @@ export default function ERPVerify() {
   }, [])
 
   const handleVerify = async () => {
-    // Basic validation
-    if (!erpId.trim()) {
-      toast.error('Please enter your ERP ID!')
+  if (!erpId.trim()) {
+    toast.error('Please enter your ERP ID!')
+    return
+  }
+
+  setLoading(true)
+
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('erp_id', erpId.trim().toUpperCase())
+      .single()
+
+    if (error || !data) {
+      toast.error('ERP ID not found! Check and try again.')
+      setLoading(false)
       return
     }
 
-    setLoading(true)
-
-    try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('erp_id', erpId.trim().toUpperCase())
-        .single()
-
-        console.log('Result:', data, 'Error:', error)
-
-      if (error || !data) {
-        toast.error('ERP ID not found! Check and try again.')
-        setLoading(false)
-        return
-      }
-      
-
-      // Check branch matches
-      const selectedBranch = sessionStorage.getItem('selectedBranch')
-      if (data.branch !== selectedBranch) {
-        toast.error(`This ERP belongs to ${data.branch}, not ${selectedBranch}!`)
-        setLoading(false)
-        return
-      }
-
-      // Already registered?
-      if (data.is_registered) {
-        toast.error('You are already registered! 🎟️')
-        setLoading(false)
-        return
-      }
-
-      // Save student data to sessionStorage
-      sessionStorage.setItem('studentData', JSON.stringify(data))
-
-      // Route based on role
-      navigate('/profile')
-
-    } catch (err) {
-      toast.error('Something went wrong. Try again!')
+    // Check branch matches
+    const selectedBranch = sessionStorage.getItem('selectedBranch')
+    if (data.branch !== selectedBranch) {
+      toast.error(`This ERP belongs to ${data.branch}, not ${selectedBranch}!`)
       setLoading(false)
+      return
     }
+
+    // Already registered?
+    if (data.is_registered) {
+      toast.error('You are already registered! 🎟️')
+      setLoading(false)
+      return
+    }
+
+    // Auto detect role
+    const detectRole = (branch, year) => {
+      if (branch === 'MCA') {
+        return year >= 2 ? 'senior' : 'junior'
+      } else {
+        return year >= 4 ? 'senior' : 'junior'
+      }
+    }
+
+    const detectedRole = detectRole(data.branch, data.year)
+    const studentWithRole = { ...data, role: detectedRole }
+
+    // Save to sessionStorage
+    sessionStorage.setItem('studentData', JSON.stringify(studentWithRole))
+
+    navigate('/profile')
+
+  } catch (err) {
+    toast.error('Something went wrong. Try again!')
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen bg-black flex flex-col px-6 py-10">
