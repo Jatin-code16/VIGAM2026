@@ -1,29 +1,43 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Grain, Particles, GoldBtn } from '../components/UI'
 
 export default function NotFound() {
   const navigate = useNavigate()
-
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 text-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.5 }}
-      >
-        <div className="text-7xl mb-6">🎬</div>
-        <h1 className="text-6xl font-black text-yellow-400 mb-2">404</h1>
-        <p className="text-white font-black text-2xl mb-2">Scene Not Found!</p>
-        <p className="text-white/40 text-sm mb-8">
+    <div style={{
+      minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: 24, textAlign: 'center', position: 'relative',
+    }}>
+      <Particles />
+      <Grain />
+      <div className="animate-burst" style={{ position: 'relative', zIndex: 2, maxWidth: 320 }}>
+        <div style={{ fontSize: 60, marginBottom: 12 }}>🎬</div>
+        <div style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700', fontSize: 64,
+          textShadow: '0 0 30px #FFD700',
+          marginBottom: 8,
+        }}>
+          404
+        </div>
+        <div style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFF8E7', fontSize: 18, marginBottom: 8,
+        }}>
+          Scene Not Found!
+        </div>
+        <div style={{
+          fontFamily: "'Caveat', cursive",
+          color: '#FFF8E766', fontSize: 15, marginBottom: 28,
+        }}>
           This page got cut from the final edit.
-        </p>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-yellow-400 text-black font-black px-8 py-4 rounded-2xl active:scale-95 transition-transform"
-        >
+        </div>
+        <GoldBtn onClick={() => navigate('/')}>
           Back to Home 🏠
-        </button>
-      </motion.div>
+        </GoldBtn>
+      </div>
     </div>
   )
 }

@@ -1,128 +1,122 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Grain, Particles, GoldBtn, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
 
 const BRANCHES = [
-  {
-    id: 'IT',
-    name: 'Information Technology',
-    short: 'IT',
-    emoji: '💻',
-    color: 'from-blue-600 to-blue-800',
-    border: 'border-blue-400/50',
-    glow: 'shadow-blue-500/25',
-  },
-  {
-    id: 'Cyber',
-    name: 'Cyber Security',
-    short: 'Cyber',
-    emoji: '🔐',
-    color: 'from-red-600 to-red-800',
-    border: 'border-red-400/50',
-    glow: 'shadow-red-500/25',
-  },
-  {
-    id: 'DS',
-    name: 'Data Science',
-    short: 'DS',
-    emoji: '📊',
-    color: 'from-green-600 to-green-800',
-    border: 'border-green-400/50',
-    glow: 'shadow-green-500/25',
-  },
-  {
-    id: 'MCA',
-    name: 'Master of Computer Applications',
-    short: 'MCA',
-    emoji: '🎓',
-    color: 'from-purple-600 to-purple-800',
-    border: 'border-purple-400/50',
-    glow: 'shadow-purple-500/25',
-  },
+  { id: 'IT', label: 'Information Technology', icon: '🖥️', tagline: 'The Builders' },
+  { id: 'Cyber', label: 'Cyber Security', icon: '🔐', tagline: 'The Guardians' },
+  { id: 'DS', label: 'Data Science', icon: '📊', tagline: 'The Analysts' },
+  { id: 'MCA', label: 'MCA', icon: '🎓', tagline: 'The Masters' },
 ]
+
+const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
+
+function BranchCard({ branch, selected, onClick }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: selected
+          ? 'rgba(255,215,0,0.15)'
+          : hovered ? 'rgba(255,215,0,0.07)' : 'rgba(255,255,255,0.03)',
+        border: `1.5px solid ${selected || hovered ? '#FFD700' : '#FFD70033'}`,
+        borderRadius: 10, padding: '16px 10px',
+        textAlign: 'center', cursor: 'pointer',
+        transition: 'all 0.25s',
+        transform: selected ? 'scale(1.05)' : hovered ? 'scale(1.02)' : 'scale(1)',
+        boxShadow: selected
+          ? '0 0 20px #FFD70066'
+          : hovered ? '0 0 10px #FFD70033' : 'none',
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <div style={{ fontSize: 26, marginBottom: 5 }}>{branch.icon}</div>
+      <div style={{
+        fontFamily: "'Cinzel Decorative', serif",
+        color: '#FFD700', fontSize: 9,
+        fontWeight: 700, letterSpacing: 0.5, marginBottom: 3,
+      }}>
+        {branch.id}
+      </div>
+      <div style={{
+        fontFamily: "'Poppins', sans-serif",
+        color: '#FFF8E7aa', fontSize: 9, marginBottom: 2,
+      }}>
+        {branch.label}
+      </div>
+      <div style={{
+        fontFamily: "'Caveat', cursive",
+        color: '#FFD70077', fontSize: 12,
+      }}>
+        {branch.tagline}
+      </div>
+    </div>
+  )
+}
 
 export default function BranchSelect() {
   const navigate = useNavigate()
+  const [selected, setSelected] = useState(null)
 
   const handleSelect = (branch) => {
-    // Save branch to sessionStorage
+    setSelected(branch.id)
     sessionStorage.setItem('selectedBranch', branch.id)
-    navigate('/verify')
+    setTimeout(() => navigate('/verify'), 400)
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col px-6 py-10">
+    <div style={{
+      minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+      fontFamily: "'Poppins', sans-serif", overflowX: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '20px 16px', position: 'relative',
+    }}>
+      <Particles />
+      <Grain />
+      <BackBtn onClick={() => navigate('/')} />
+      <ProgressDots steps={STEPS} current="branch" />
 
-      {/* Header */}
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Back hint */}
-        <p
-          className="text-yellow-400/50 text-sm mb-6 cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          ← Back
+      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 360 }}>
+        <ReelLabel number={1} />
+
+        <h2 style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700',
+          fontSize: 'clamp(16px, 5vw, 26px)',
+          textAlign: 'center', marginBottom: 6,
+          textShadow: '0 0 20px #FFD70055',
+        }}>
+          Kaun si duniya se ho tum?
+        </h2>
+
+        <p style={{
+          fontFamily: "'Poppins', sans-serif",
+          color: '#FFF8E777', fontSize: 12,
+          marginBottom: 24, textAlign: 'center',
+        }}>
+          Select your branch to enter the VIGAM universe
         </p>
 
-        <h1 className="text-3xl font-black text-white">
-          Select Your <span className="text-yellow-400">Branch</span>
-        </h1>
-        <p className="text-white/40 text-sm mt-2">
-          Which department are you from?
-        </p>
-      </motion.div>
-
-      {/* Branch Cards */}
-      <div className="flex flex-col gap-4 max-w-sm mx-auto w-full">
-        {BRANCHES.map((branch, index) => (
-          <motion.button
-            key={branch.id}
-            onClick={() => handleSelect(branch)}
-            className={`
-              w-full bg-gradient-to-r ${branch.color}
-              border ${branch.border}
-              rounded-2xl p-5 text-left
-              shadow-lg ${branch.glow}
-              active:scale-95 transition-transform
-            `}
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="flex items-center gap-4">
-              {/* Emoji */}
-              <span className="text-4xl">{branch.emoji}</span>
-
-              {/* Text */}
-              <div>
-                <p className="text-white font-black text-xl">
-                  {branch.short}
-                </p>
-                <p className="text-white/60 text-xs mt-0.5">
-                  {branch.name}
-                </p>
-              </div>
-
-              {/* Arrow */}
-              <span className="ml-auto text-white/40 text-xl">→</span>
-            </div>
-          </motion.button>
-        ))}
+        {/* Branch Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 10, width: '100%',
+        }}>
+          {BRANCHES.map(branch => (
+            <BranchCard
+              key={branch.id}
+              branch={branch}
+              selected={selected === branch.id}
+              onClick={() => handleSelect(branch)}
+            />
+          ))}
+        </div>
       </div>
-
-      {/* Footer */}
-      <motion.p
-        className="text-center text-white/20 text-xs mt-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-      >
-        🎬 VIGAM 2026
-      </motion.p>
     </div>
   )
 }

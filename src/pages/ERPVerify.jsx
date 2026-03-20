@@ -1,166 +1,203 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
+import { Grain, Particles, GoldBtn, GoldCard, GoldInput, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
+
+const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
+
+const LOADING_LINES = [
+  '> Connecting to VIGAM Mainframe...',
+  '> Scanning college database...',
+  '> Fetching your legacy...',
+  '> Counting your late submissions... 👀',
+  '> Scanning for attendance defaulters... 😅',
+  '> Just kidding. You\'re clear. 😂',
+  '> ████████████████ FOUND. 100%',
+  '> IDENTITY CONFIRMED. WELCOME.',
+]
 
 export default function ERPVerify() {
   const navigate = useNavigate()
   const [erpId, setErpId] = useState('')
   const [loading, setLoading] = useState(false)
+  const [lines, setLines] = useState([])
+  const [error, setError] = useState('')
 
-  // Check if branch was selected
   useEffect(() => {
-  const validBranches = ['IT', 'Cyber', 'DS', 'MCA']
-  const branch = sessionStorage.getItem('selectedBranch')
-  if (!branch || !validBranches.includes(branch)) {
-    navigate('/branch')
-  }
-}, [])
+    const validBranches = ['IT', 'Cyber', 'DS', 'MCA']
+    const branch = sessionStorage.getItem('selectedBranch')
+    if (!branch || !validBranches.includes(branch)) navigate('/branch')
+  }, [])
 
   const handleVerify = async () => {
-  if (!erpId.trim()) {
-    toast.error('Please enter your ERP ID!')
-    return
-  }
-
-  setLoading(true)
-
-  try {
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .eq('erp_id', erpId.trim().toUpperCase())
-      .single()
-
-    if (error || !data) {
-      toast.error('ERP ID not found! Check and try again.')
-      setLoading(false)
+    if (!erpId.trim()) {
+      toast.error('Please enter your ERP ID!')
       return
     }
 
-    // Check branch matches
-    const selectedBranch = sessionStorage.getItem('selectedBranch')
-    if (data.branch !== selectedBranch) {
-      toast.error(`This ERP belongs to ${data.branch}, not ${selectedBranch}!`)
-      setLoading(false)
-      return
-    }
+    setError('')
+    setLoading(true)
+    setLines([])
 
-    // Already registered?
-    if (data.is_registered) {
-      toast.error('You are already registered! 🎟️')
-      setLoading(false)
-      return
-    }
+    // Show cinematic loading lines
+    LOADING_LINES.forEach((line, i) => {
+      setTimeout(() => {
+        setLines(prev => [...prev, { text: line, index: i }])
+      }, i * 450 + 200)
+    })
 
-    // Auto detect role
-    const detectRole = (branch, year) => {
-      if (branch === 'MCA') {
-        return year >= 2 ? 'senior' : 'junior'
-      } else {
-        return year >= 4 ? 'senior' : 'junior'
+    // Actually query Supabase in parallel
+    setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('erp_id', erpId.trim().toUpperCase())
+          .single()
+
+        if (error || !data) {
+          setLoading(false)
+          setLines([])
+          setError('🎬 Cut! Retake needed. ERP ID not found in our records.')
+          return
+        }
+
+        const selectedBranch = sessionStorage.getItem('selectedBranch')
+        if (data.branch !== selectedBranch) {
+          setLoading(false)
+          setLines([])
+          setError(`🎬 Wrong set! This ERP belongs to ${data.branch}, not ${selectedBranch}.`)
+          return
+        }
+
+        if (data.is_registered) {
+          setLoading(false)
+          setLines([])
+          setError('🎟️ Already registered! Your pass is ready. Check WhatsApp before event.')
+          return
+        }
+
+        // Detect role
+        const role = data.branch === 'MCA'
+          ? (data.year >= 2 ? 'senior' : 'junior')
+          : (data.year >= 4 ? 'senior' : 'junior')
+
+        sessionStorage.setItem('studentData', JSON.stringify({ ...data, role }))
+        navigate('/profile')
+
+      } catch (err) {
+        setLoading(false)
+        setLines([])
+        setError('Something went wrong. Try again!')
       }
-    }
-
-    const detectedRole = detectRole(data.branch, data.year)
-    const studentWithRole = { ...data, role: detectedRole }
-
-    // Save to sessionStorage
-    sessionStorage.setItem('studentData', JSON.stringify(studentWithRole))
-
-    navigate('/profile')
-
-  } catch (err) {
-    toast.error('Something went wrong. Try again!')
-    setLoading(false)
+    }, LOADING_LINES.length * 450 + 600)
   }
-}
+
+  // Cinematic loading screen
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: '#0A0A0A',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 20,
+        position: 'relative',
+      }}>
+        <Grain />
+        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 380 }}>
+          <GoldCard>
+            <div style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              color: '#FFD700', fontSize: 11,
+              marginBottom: 10, textAlign: 'center', letterSpacing: 2,
+            }}>
+              🎞️ VIGAM MAINFRAME — INITIATING...
+            </div>
+            <div style={{
+              height: 1,
+              background: 'linear-gradient(90deg,transparent,#FFD700,transparent)',
+              marginBottom: 14,
+            }} />
+            {lines.map(({ text, index }) => (
+              <div key={index} className="animate-fadeIn" style={{
+                fontFamily: "'Poppins', monospace",
+                color: index === lines.length - 1 ? '#FFD700' : '#FFF8E7bb',
+                fontSize: 11, marginBottom: 7, lineHeight: 1.6,
+              }}>
+                {text} {index < 3 && <span style={{ color: '#4CAF50' }}>✅</span>}
+              </div>
+            ))}
+            {lines.length < LOADING_LINES.length && (
+              <div style={{ color: '#FFD700', fontSize: 12, animation: 'fadeIn 0.5s infinite alternate' }}>_</div>
+            )}
+          </GoldCard>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col px-6 py-10">
+    <div style={{
+      minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: 24, position: 'relative',
+    }}>
+      <Particles />
+      <Grain />
+      <BackBtn onClick={() => navigate('/branch')} />
+      <ProgressDots steps={STEPS} current="verify" />
 
-      {/* Header */}
-      <motion.div
-        className="text-center mb-10"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <p
-          className="text-yellow-400/50 text-sm mb-6 cursor-pointer"
-          onClick={() => navigate('/branch')}
-        >
-          ← Back
+      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 340 }}>
+        <ReelLabel number={2} />
+
+        <h2 style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700',
+          fontSize: 'clamp(15px, 4.5vw, 24px)',
+          textAlign: 'center', marginBottom: 6,
+          textShadow: '0 0 20px #FFD70055',
+        }}>
+          Prove you belong here.
+        </h2>
+
+        <p style={{
+          fontFamily: "'Poppins', sans-serif",
+          color: '#FFF8E777', fontSize: 12,
+          marginBottom: 28, textAlign: 'center',
+        }}>
+          Your ERP ID — your college identity, one last time.
         </p>
 
-        <div className="text-5xl mb-4">🎟️</div>
-
-        <h1 className="text-3xl font-black text-white">
-          Enter Your <span className="text-yellow-400">ERP ID</span>
-        </h1>
-        <p className="text-white/40 text-sm mt-2">
-          We'll fetch your details automatically
-        </p>
-      </motion.div>
-
-      {/* Input */}
-      <motion.div
-        className="max-w-sm mx-auto w-full"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <input
-          type="text"
+        <GoldInput
           value={erpId}
-          onChange={(e) => setErpId(e.target.value.toUpperCase())}
-          onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-          placeholder="e.g. IT2024001"
-          className="w-full bg-white/5 border border-white/20 rounded-2xl px-5 py-4 text-white text-lg font-mono tracking-widest placeholder:text-white/20 focus:outline-none focus:border-yellow-400/60 text-center"
+          onChange={e => { setErpId(e.target.value); setError('') }}
+          onKeyDown={e => e.key === 'Enter' && handleVerify()}
+          placeholder="Enter your ERP ID..."
           maxLength={15}
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck="false"
         />
 
-        {/* Hint */}
-        <p className="text-white/20 text-xs text-center mt-3">
-          Your ERP ID is on your college ID card
-        </p>
+        {error && (
+          <GoldCard style={{
+            borderColor: '#C0392B',
+            background: 'rgba(192,57,43,0.08)',
+            margin: '14px 0',
+          }}>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFF8E7', fontSize: 12, lineHeight: 1.6,
+            }}>
+              {error}
+            </p>
+          </GoldCard>
+        )}
 
-        {/* Verify Button */}
-        <motion.button
-          onClick={handleVerify}
-          disabled={loading}
-          className="w-full mt-6 bg-yellow-400 text-black font-black text-lg py-4 rounded-2xl shadow-lg shadow-yellow-400/25 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-          whileTap={{ scale: 0.95 }}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="inline-block"
-              >
-                ⏳
-              </motion.span>
-              Checking...
-            </span>
-          ) : (
-            'Verify ERP ID →'
-          )}
-        </motion.button>
-      </motion.div>
-
-      {/* Decorative */}
-      <motion.p
-        className="text-center text-white/20 text-xs mt-auto pt-10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        🎬 VIGAM 2026 — Where Bollywood Meets Binary
-      </motion.p>
+        <div style={{ marginTop: 14 }}>
+          <GoldBtn onClick={handleVerify}>
+            VERIFY IDENTITY 🎬
+          </GoldBtn>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,36 +1,37 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { Grain, Particles, GoldBtn, GoldCard, Divider, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
+
+const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
 
 export default function ProfileConfirm() {
   const navigate = useNavigate()
   const [student, setStudent] = useState(null)
   const [phone, setPhone] = useState('')
-  const [editing, setEditing] = useState(false)
+  const [phase, setPhase] = useState(0)
 
   useEffect(() => {
     const data = sessionStorage.getItem('studentData')
-    if (!data) {
-      navigate('/branch')
-      return
-    }
+    if (!data) { navigate('/branch'); return }
     const parsed = JSON.parse(data)
     setStudent(parsed)
     setPhone(parsed.phone || '')
+
+    const timers = [400, 1100, 1900].map((t, i) =>
+      setTimeout(() => setPhase(i + 1), t)
+    )
+    return () => timers.forEach(clearTimeout)
   }, [])
 
   const handleConfirm = () => {
     if (!phone.trim() || phone.length < 10) {
-      toast.error('Please enter a valid phone number!')
+      toast.error('Please enter a valid 10-digit phone number!')
       return
     }
-
-    // Update phone in sessionStorage
     const updated = { ...student, phone }
     sessionStorage.setItem('studentData', JSON.stringify(updated))
 
-    // Route based on role
     if (student.role === 'senior') {
       navigate('/photo')
     } else {
@@ -41,128 +42,142 @@ export default function ProfileConfirm() {
   if (!student) return null
 
   return (
-    <div className="min-h-screen bg-black flex flex-col px-6 py-10">
+    <div style={{
+      minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: 24, position: 'relative',
+    }}>
+      <Particles />
+      <Grain />
+      <BackBtn onClick={() => navigate('/verify')} />
+      <ProgressDots steps={STEPS} current="profile" />
 
-      {/* Header */}
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <p
-          className="text-yellow-400/50 text-sm mb-6 cursor-pointer"
-          onClick={() => navigate('/verify')}
-        >
-          ← Back
-        </p>
+      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 340 }}>
+        <ReelLabel number={3} />
 
-        <div className="text-5xl mb-4">👤</div>
-
-        <h1 className="text-3xl font-black text-white">
-          Is this <span className="text-yellow-400">You?</span>
-        </h1>
-        <p className="text-white/40 text-sm mt-2">
-          Confirm your details before registering
-        </p>
-      </motion.div>
-
-      {/* Profile Card */}
-      <motion.div
-        className="max-w-sm mx-auto w-full"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        {/* Card */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 mb-6">
-
-          {/* Role Badge */}
-          <div className="flex justify-between items-center mb-6">
-            <span className={`
-              text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest
-              ${student.role === 'senior'
-                ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                : 'bg-blue-400/20 text-blue-400 border border-blue-400/30'}
-            `}>
-              {student.role === 'senior' ? '🎓 Senior' : '⚡ Junior'}
-            </span>
-            <span className="text-white/30 text-xs font-mono">
-              {student.erp_id}
-            </span>
+        {/* Clapperboard badge */}
+        {phase >= 1 && (
+          <div className="animate-stamp" style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{
+              display: 'inline-block',
+              background: '#1a1a1a',
+              border: '2px solid #FFD700',
+              borderRadius: 8,
+              padding: '8px 18px',
+              fontFamily: "'Poppins', monospace",
+              fontSize: 10, color: '#FFD700', letterSpacing: 1.5,
+            }}>
+              🎬 VIGAM 2026 | {student.role.toUpperCase()} | ERP: {student.erp_id} | TAKE 1
+            </div>
           </div>
+        )}
 
-          {/* Details */}
-          <div className="space-y-4">
+        {phase >= 2 && (
+          <h2 className="animate-fadeIn" style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#FFD700',
+            fontSize: 'clamp(16px, 4.5vw, 24px)',
+            textAlign: 'center', marginBottom: 18,
+            textShadow: '0 0 20px #FFD70066',
+          }}>
+            Hazir ho, {student.name}! 🎬
+          </h2>
+        )}
 
-            {/* Name */}
-            <div className="flex flex-col gap-1">
-              <p className="text-white/40 text-xs uppercase tracking-widest">
-                Name
-              </p>
-              <p className="text-white font-bold text-xl">
-                {student.name}
-              </p>
-            </div>
+        {phase >= 2 && (
+          <div className="animate-slideUp">
+            <GoldCard glow>
 
-            {/* Branch */}
-            <div className="flex flex-col gap-1">
-              <p className="text-white/40 text-xs uppercase tracking-widest">
-                Branch
-              </p>
-              <p className="text-white font-bold text-xl">
-                {student.branch} — Year {student.year}
-              </p>
-            </div>
-
-            {/* Phone */}
-            <div className="flex flex-col gap-1">
-              <p className="text-white/40 text-xs uppercase tracking-widest">
-                Phone Number
-              </p>
-              {editing ? (
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="bg-white/10 border border-yellow-400/50 rounded-xl px-4 py-2 text-white font-bold text-xl focus:outline-none"
-                  maxLength={10}
-                  autoFocus
-                />
-              ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-white font-bold text-xl">
-                    {phone || 'Not provided'}
-                  </p>
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="text-yellow-400/70 text-xs underline"
-                  >
-                    Edit
-                  </button>
+              {/* Name */}
+              {[
+                ['👤', 'Name', student.name],
+                ['🆔', 'ERP ID', student.erp_id],
+                ['🏛️', 'Branch', `${student.branch} — Year ${student.year}`],
+              ].map(([icon, label, value]) => (
+                <div key={label} style={{
+                  display: 'flex', alignItems: 'center',
+                  gap: 12, marginBottom: 14,
+                }}>
+                  <span style={{ fontSize: 20 }}>{icon}</span>
+                  <div>
+                    <div style={{
+                      fontFamily: "'Poppins', sans-serif",
+                      color: '#FFD70077', fontSize: 9,
+                      letterSpacing: 2, textTransform: 'uppercase',
+                    }}>
+                      {label}
+                    </div>
+                    <div style={{
+                      fontFamily: "'Playfair Display', serif",
+                      color: '#FFF8E7', fontSize: 15,
+                    }}>
+                      {value}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              ))}
 
+              {/* Phone */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 20 }}>📱</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontFamily: "'Poppins', sans-serif",
+                    color: '#FFD70077', fontSize: 9,
+                    letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4,
+                  }}>
+                    Phone (editable)
+                  </div>
+                  <input
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    maxLength={10}
+                    style={{
+                      background: 'rgba(255,215,0,0.07)',
+                      border: '1px solid #FFD70044',
+                      borderRadius: 6,
+                      padding: '7px 10px',
+                      color: '#FFF8E7',
+                      fontFamily: "'Poppins', sans-serif",
+                      fontSize: 13, width: '100%',
+                    }}
+                  />
+                </div>
+              </div>
+
+            </GoldCard>
+
+            {phase >= 3 && (
+              <div className="animate-fadeIn">
+                <Divider />
+                <div style={{
+                  fontFamily: "'Caveat', cursive",
+                  color: '#FFD700aa', fontSize: 16,
+                  textAlign: 'center', margin: '14px 0',
+                  fontStyle: 'italic',
+                }}>
+                  "4 saal ki mehnat. Ek last registration." ✨
+                </div>
+                <GoldBtn onClick={handleConfirm}>
+                  Bilkul sahi. Aage chalte hain →
+                </GoldBtn>
+                <p
+                  onClick={() => navigate('/verify')}
+                  style={{
+                    fontFamily: "'Poppins', sans-serif",
+                    color: '#FFF8E733', fontSize: 10,
+                    textAlign: 'center', marginTop: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Not you? Go back
+                </p>
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Confirm Button */}
-        <motion.button
-          onClick={handleConfirm}
-          className="w-full bg-yellow-400 text-black font-black text-lg py-4 rounded-2xl shadow-lg shadow-yellow-400/25 active:scale-95 transition-transform"
-          whileTap={{ scale: 0.95 }}
-        >
-          Yes, That's Me! ✅
-        </motion.button>
-
-        {/* Wrong person */}
-        <p
-          className="text-center text-white/30 text-xs mt-4 cursor-pointer"
-          onClick={() => navigate('/verify')}
-        >
-          Not you? Go back and try again
-        </p>
-      </motion.div>
+        )}
+      </div>
     </div>
   )
 }

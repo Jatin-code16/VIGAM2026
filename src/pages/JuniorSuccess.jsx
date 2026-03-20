@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
+import { Grain, Particles, GoldBtn, GoldCard, Divider } from '../components/UI'
 
-// 🔴 REPLACE THIS with your actual Google Form link!
-const GOOGLE_FORM_URL = 'https://forms.gle/5W85z5XaP9wHithZ8'
+const GOOGLE_FORM_URL = 'https://forms.gle/KSp77PTp8nu98Hgk7'
 
 export default function JuniorSuccess() {
   const navigate = useNavigate()
@@ -13,15 +12,13 @@ export default function JuniorSuccess() {
   const [saving, setSaving] = useState(true)
 
   useEffect(() => {
-    const registerJunior = async () => {
+    const register = async () => {
       const data = sessionStorage.getItem('studentData')
       if (!data) { navigate('/branch'); return }
-
       const parsed = JSON.parse(data)
       setStudent(parsed)
 
       try {
-        // Save junior registration to Supabase
         const { error } = await supabase
           .from('students')
           .update({
@@ -32,47 +29,47 @@ export default function JuniorSuccess() {
           .eq('erp_id', parsed.erp_id)
 
         if (error) {
-          toast.error('Registration failed! Please try again.')
+          toast.error('Registration failed!')
           navigate('/profile')
           return
         }
-
         setSaving(false)
-
       } catch (err) {
         toast.error('Something went wrong!')
         setSaving(false)
       }
     }
-
-    registerJunior()
+    register()
   }, [])
 
   const handleVolunteer = async () => {
-    // Save volunteer interest
     await supabase
       .from('students')
       .update({ wants_to_volunteer: true })
       .eq('erp_id', student.erp_id)
-
-    // Open Google Form
     window.open(GOOGLE_FORM_URL, '_blank')
   }
 
   if (saving) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
-        <motion.div
-          className="text-6xl"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
+      <div style={{
+        minHeight: '100vh', background: '#0A0A0A',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 16,
+      }}>
+        <Grain />
+        <div style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700', fontSize: 36,
+        }}>
           ⚡
-        </motion.div>
-        <div className="text-center">
-          <p className="text-blue-400 font-black text-xl">Registering you...</p>
-          <p className="text-white/40 text-sm mt-2">Please don't close this screen!</p>
         </div>
+        <p style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700', fontSize: 14, letterSpacing: 2,
+        }}>
+          Registering you...
+        </p>
       </div>
     )
   }
@@ -80,105 +77,126 @@ export default function JuniorSuccess() {
   if (!student) return null
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 py-10">
+    <div style={{
+      minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: 24, position: 'relative',
+    }}>
+      <Particles />
+      <Grain />
 
-      {/* Success Animation */}
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.5 }}
-      >
-        <motion.div
-          className="text-7xl mb-4"
-          animate={{ rotate: [0, -10, 10, 0] }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          ✅
-        </motion.div>
+      <div className="animate-burst" style={{
+        position: 'relative', zIndex: 2,
+        width: '100%', maxWidth: 360, textAlign: 'center',
+      }}>
 
-        <h1 className="text-3xl font-black text-white">
-          You're <span className="text-blue-400">Registered!</span>
+        <div style={{ fontSize: 52, marginBottom: 8 }}>✅</div>
+
+        <h1 style={{
+          fontFamily: "'Cinzel Decorative', serif",
+          color: '#FFD700',
+          fontSize: 'clamp(18px, 5vw, 28px)',
+          textShadow: '0 0 20px #FFD70055',
+          marginBottom: 6,
+        }}>
+          You're In!
         </h1>
-        <p className="text-white/40 text-sm mt-2">
+
+        <p style={{
+          fontFamily: "'Playfair Display', serif",
+          fontStyle: 'italic', color: '#FFF8E7bb',
+          fontSize: 13, marginBottom: 22, lineHeight: 1.7,
+        }}>
           Hey {student.name}! See you at VIGAM 2026 🎬
         </p>
-      </motion.div>
 
-      {/* Registration Card */}
-      <motion.div
-        className="w-full max-w-sm bg-white/5 border border-white/10 rounded-3xl p-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        {/* Badge */}
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-blue-400/20 text-blue-400 border border-blue-400/30">
-            ⚡ Junior
-          </span>
-          <span className="text-white/30 text-xs font-mono">
-            {student.erp_id}
-          </span>
-        </div>
+        {/* Registration Card */}
+        <GoldCard glow style={{ marginBottom: 20, textAlign: 'left' }}>
+          <div style={{
+            display: 'inline-block',
+            background: 'rgba(255,215,0,0.1)',
+            border: '1px solid #FFD70044',
+            borderRadius: 20, padding: '4px 12px',
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFD700', fontSize: 10,
+            letterSpacing: 1, marginBottom: 12,
+          }}>
+            ⚡ JUNIOR
+          </div>
 
-        <p className="text-white font-black text-2xl mb-1">{student.name}</p>
-        <p className="text-white/40 text-sm">{student.branch} — Year {student.year}</p>
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#FFF8E7',
+            fontSize: 'clamp(14px, 4vw, 18px)',
+            marginBottom: 4,
+          }}>
+            {student.name}
+          </div>
+          <div style={{
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFD70077', fontSize: 11,
+          }}>
+            {student.branch} — Year {student.year} | {student.erp_id}
+          </div>
 
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <p className="text-white/30 text-xs">
+          <Divider />
+
+          <div style={{
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFF8E733', fontSize: 10,
+          }}>
             📅 VIGAM 2026 • April 8, 2026
-          </p>
-        </div>
-      </motion.div>
+          </div>
+        </GoldCard>
 
-      {/* Volunteer Section */}
-      <motion.div
-        className="w-full max-w-sm"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        <div className="bg-blue-400/10 border border-blue-400/30 rounded-3xl p-6 mb-4">
-          <p className="text-blue-400 font-black text-lg mb-2">
+        {/* Volunteer Section */}
+        <div style={{
+          background: 'rgba(255,215,0,0.04)',
+          border: '1.5px solid #FFD70033',
+          borderRadius: 12, padding: '18px 16px',
+          marginBottom: 14, textAlign: 'left',
+        }}>
+          <p style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#FFD700', fontSize: 12, marginBottom: 6,
+          }}>
             🙋 Want to help organise?
           </p>
-          <p className="text-white/50 text-sm">
-            We're looking for enthusiastic juniors to help coordinate VIGAM 2026!
-            Fill the form to join the team.
+          <p style={{
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFF8E766', fontSize: 11, lineHeight: 1.6,
+          }}>
+            Join the VIGAM 2026 coordination team!
+            Fill the form to volunteer.
           </p>
         </div>
 
-        {/* Volunteer Button */}
-        <motion.button
-          onClick={handleVolunteer}
-          className="w-full bg-blue-500 text-white font-black text-lg py-4 rounded-2xl shadow-lg shadow-blue-500/25 active:scale-95 transition-transform mb-3"
-          whileTap={{ scale: 0.95 }}
-        >
+        <GoldBtn onClick={handleVolunteer}>
           Yes, I want to volunteer! 🙌
-        </motion.button>
+        </GoldBtn>
 
-        {/* Skip Button */}
-        <button
+        <div
           onClick={() => {
             sessionStorage.clear()
             navigate('/')
           }}
-          className="w-full border border-white/10 text-white/40 font-bold py-3 rounded-2xl active:scale-95 transition-transform"
+          style={{
+            fontFamily: "'Caveat', cursive",
+            color: '#FFF8E733', fontSize: 14,
+            cursor: 'pointer', marginTop: 14,
+          }}
         >
-          No thanks, I'll just attend
-        </button>
-      </motion.div>
+          No thanks, I'll just attend →
+        </div>
 
-      {/* Footer */}
-      <motion.p
-        className="text-white/20 text-xs text-center mt-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        🎬 VIGAM 2026 — Where Bollywood Meets Binary
-      </motion.p>
+        <div style={{
+          fontFamily: "'Caveat', cursive",
+          color: '#FFD70044', fontSize: 12, marginTop: 16,
+        }}>
+          🎬 VIGAM 2026 — Where Bollywood Meets Binary
+        </div>
+      </div>
     </div>
   )
 }
