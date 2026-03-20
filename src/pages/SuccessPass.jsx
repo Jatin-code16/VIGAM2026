@@ -99,6 +99,52 @@ export default function SuccessPass() {
           return
         }
 
+        // Step 4 — Generate and save QR code to Supabase Storage
+        try {
+        // Create a canvas element to draw QR code
+        const canvas = document.createElement('canvas')
+        canvas.width = 300
+        canvas.height = 300
+
+        // Use QRCode library to draw on canvas
+        const QRCodeLib = await import('qrcode')
+        await QRCodeLib.toCanvas(canvas, qrValue, {
+            width: 300,
+            margin: 2,
+            color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+            }
+        })
+
+        // Convert canvas to blob
+        const qrBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+        const qrFileName = `${parsed.erp_id}_QR.png`
+
+        // Upload to Supabase Storage
+        const { error: qrUploadError } = await supabase.storage
+            .from('qrcodes')
+            .upload(qrFileName, qrBlob, {
+            contentType: 'image/png',
+            upsert: true
+            })
+
+        if (!qrUploadError) {
+            const { data: qrUrlData } = supabase.storage
+            .from('qrcodes')
+            .getPublicUrl(qrFileName)
+
+            // Save QR URL to database
+            await supabase
+            .from('students')
+            .update({ qr_code_url: qrUrlData.publicUrl })
+            .eq('erp_id', parsed.erp_id)
+        }
+        } catch (qrErr) {
+        console.log('QR save failed silently:', qrErr)
+        // Non-critical — student still registered, QR shown on screen
+        }
+
         // Update local state with rank
         setStudent({ ...parsed, registered_rank: registrationRank })
         setSaving(false)
