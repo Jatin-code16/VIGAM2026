@@ -131,7 +131,6 @@ export default function PhotoUpload() {
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="user"
           onChange={handleFileChange}
           className="hidden"
         />

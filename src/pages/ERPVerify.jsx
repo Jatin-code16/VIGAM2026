@@ -11,9 +11,12 @@ export default function ERPVerify() {
 
   // Check if branch was selected
   useEffect(() => {
-    const branch = sessionStorage.getItem('selectedBranch')
-    if (!branch) navigate('/branch')
-  }, [])
+  const validBranches = ['IT', 'Cyber', 'DS', 'MCA']
+  const branch = sessionStorage.getItem('selectedBranch')
+  if (!branch || !validBranches.includes(branch)) {
+    navigate('/branch')
+  }
+}, [])
 
   const handleVerify = async () => {
   if (!erpId.trim()) {
