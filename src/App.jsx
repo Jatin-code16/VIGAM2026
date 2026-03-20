@@ -9,6 +9,7 @@ import ProfileConfirm from './pages/ProfileConfirm'
 import PhotoUpload from './pages/PhotoUpload'
 import Superlative from './pages/Superlative'
 import SuccessPass from './pages/SuccessPass'
+import JuniorVolunteer from './pages/JuniorVolunteer'
 import JuniorSuccess from './pages/JuniorSuccess'
 import NotFound from './pages/NotFound'
 
@@ -29,6 +30,7 @@ function App() {
         <Route path="/photo" element={<PhotoUpload />} />
         <Route path="/superlative" element={<Superlative />} />
         <Route path="/pass" element={<SuccessPass />} />
+        <Route path="/junior-volunteer" element={<JuniorVolunteer />} />
         <Route path="/junior-success" element={<JuniorSuccess />} />
 
         {/* Admin & Checkin */}

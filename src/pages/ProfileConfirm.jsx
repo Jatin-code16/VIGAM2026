@@ -35,7 +35,7 @@ export default function ProfileConfirm() {
     if (student.role === 'senior') {
       navigate('/photo')
     } else {
-      navigate('/junior-success')
+      navigate('/junior-volunteer')
     }
   }
 

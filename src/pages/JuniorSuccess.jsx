@@ -2,14 +2,35 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
+import { QRCodeCanvas } from 'qrcode.react'
 import { Grain, Particles, GoldBtn, GoldCard, Divider } from '../components/UI'
 
-const GOOGLE_FORM_URL = 'https://forms.gle/KSp77PTp8nu98Hgk7'
+
+function useCountdown(targetDate) {
+  const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
+  useEffect(() => {
+    const tick = () => {
+      const diff = Math.max(0, new Date(targetDate) - new Date())
+      setT({
+        d: Math.floor(diff / 86400000),
+        h: Math.floor((diff % 86400000) / 3600000),
+        m: Math.floor((diff % 3600000) / 60000),
+        s: Math.floor((diff % 60000) / 1000),
+      })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+  return t
+}
 
 export default function JuniorSuccess() {
   const navigate = useNavigate()
   const [student, setStudent] = useState(null)
   const [saving, setSaving] = useState(true)
+  const [rank, setRank] = useState(null)
+  const t = useCountdown('2026-04-08T18:00:00')
 
   useEffect(() => {
     const register = async () => {
@@ -19,12 +40,21 @@ export default function JuniorSuccess() {
       setStudent(parsed)
 
       try {
+        // Get registration rank
+        const { count } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_registered', true)
+        const registrationRank = (count || 0) + 1
+        setRank(registrationRank)
+
         const { error } = await supabase
           .from('students')
           .update({
             phone: parsed.phone,
             is_registered: true,
             registered_at: new Date().toISOString(),
+            registered_rank: registrationRank,
           })
           .eq('erp_id', parsed.erp_id)
 
@@ -33,6 +63,10 @@ export default function JuniorSuccess() {
           navigate('/profile')
           return
         }
+
+        // Clear session after 30 seconds
+        setTimeout(() => sessionStorage.clear(), 30000)
+
         setSaving(false)
       } catch (err) {
         toast.error('Something went wrong!')
@@ -42,13 +76,6 @@ export default function JuniorSuccess() {
     register()
   }, [])
 
-  const handleVolunteer = async () => {
-    await supabase
-      .from('students')
-      .update({ wants_to_volunteer: true })
-      .eq('erp_id', student.erp_id)
-    window.open(GOOGLE_FORM_URL, '_blank')
-  }
 
   if (saving) {
     return (
@@ -60,13 +87,13 @@ export default function JuniorSuccess() {
         <Grain />
         <div style={{
           fontFamily: "'Cinzel Decorative', serif",
-          color: '#FFD700', fontSize: 36,
+          color: '#60a5fa', fontSize: 36,
         }}>
           ⚡
         </div>
         <p style={{
           fontFamily: "'Cinzel Decorative', serif",
-          color: '#FFD700', fontSize: 14, letterSpacing: 2,
+          color: '#60a5fa', fontSize: 14, letterSpacing: 2,
         }}>
           Registering you...
         </p>
@@ -76,12 +103,14 @@ export default function JuniorSuccess() {
 
   if (!student) return null
 
+  const qrValue = `VIGAM2026|${student.erp_id}|${student.name}`
+
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: 24, position: 'relative',
+      alignItems: 'center', padding: 24,
+      position: 'relative',
     }}>
       <Particles />
       <Grain />
@@ -91,78 +120,179 @@ export default function JuniorSuccess() {
         width: '100%', maxWidth: 360, textAlign: 'center',
       }}>
 
-        <div style={{ fontSize: 52, marginBottom: 8 }}>✅</div>
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 46, marginBottom: 8 }}>🎊</div>
+          <h1 style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#60a5fa',
+            fontSize: 'clamp(18px, 5vw, 26px)',
+            textShadow: '0 0 20px #60a5fa55',
+            marginBottom: 6,
+          }}>
+            ✅ You're Registered!
+          </h1>
+          <p style={{
+            fontFamily: "'Playfair Display', serif",
+            fontStyle: 'italic', color: '#FFF8E7bb',
+            fontSize: 13, lineHeight: 1.7,
+          }}>
+            Hey {student.name}! See you at VIGAM 2026 🎬
+          </p>
+        </div>
 
-        <h1 style={{
-          fontFamily: "'Cinzel Decorative', serif",
-          color: '#FFD700',
-          fontSize: 'clamp(18px, 5vw, 28px)',
-          textShadow: '0 0 20px #FFD70055',
-          marginBottom: 6,
+        {/* Digital Pass */}
+        <div style={{
+          background: 'linear-gradient(135deg,#0d0d0d,#001133)',
+          border: '2px solid #60a5fa',
+          borderRadius: 14, padding: '22px 18px',
+          marginBottom: 18,
+          boxShadow: '0 0 40px #60a5fa33, inset 0 1px 0 #60a5fa22',
         }}>
-          You're In!
-        </h1>
+          {/* Pass Header */}
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#60a5fa', fontSize: 11, letterSpacing: 2,
+          }}>
+            🎬 VIGAM 2026 — ENTRY PASS
+          </div>
+          <div style={{
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFF8E755', fontSize: 10,
+            letterSpacing: 1, marginBottom: 10,
+          }}>
+            Where Bollywood Meets Binary
+          </div>
 
-        <p style={{
-          fontFamily: "'Playfair Display', serif",
-          fontStyle: 'italic', color: '#FFF8E7bb',
-          fontSize: 13, marginBottom: 22, lineHeight: 1.7,
-        }}>
-          Hey {student.name}! See you at VIGAM 2026 🎬
-        </p>
+          <div style={{
+            height: 1,
+            background: 'linear-gradient(90deg,transparent,#60a5fa,transparent)',
+            marginBottom: 14,
+          }} />
 
-        {/* Registration Card */}
-        <GoldCard glow style={{ marginBottom: 20, textAlign: 'left' }}>
+          {/* Junior Badge */}
           <div style={{
             display: 'inline-block',
-            background: 'rgba(255,215,0,0.1)',
-            border: '1px solid #FFD70044',
-            borderRadius: 20, padding: '4px 12px',
+            background: 'rgba(96,165,250,0.15)',
+            border: '1px solid #60a5fa44',
+            borderRadius: 20, padding: '4px 14px',
             fontFamily: "'Poppins', sans-serif",
-            color: '#FFD700', fontSize: 10,
+            color: '#60a5fa', fontSize: 10,
             letterSpacing: 1, marginBottom: 12,
           }}>
             ⚡ JUNIOR
           </div>
 
+          {/* Details */}
           <div style={{
             fontFamily: "'Cinzel Decorative', serif",
             color: '#FFF8E7',
-            fontSize: 'clamp(14px, 4vw, 18px)',
-            marginBottom: 4,
+            fontSize: 'clamp(13px, 3.5vw, 17px)',
+            marginBottom: 4, textAlign: 'center',
           }}>
             {student.name}
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",
-            color: '#FFD70077', fontSize: 11,
+            color: '#60a5fa99', fontSize: 11,
+            textAlign: 'center', marginBottom: 4,
           }}>
-            {student.branch} — Year {student.year} | {student.erp_id}
+            {student.branch} • Year {student.year} • #{rank}
+          </div>
+          <div style={{
+            fontFamily: "'Caveat', cursive",
+            color: '#FFF8E7aa', fontSize: 13,
+            textAlign: 'center', marginBottom: 12,
+          }}>
+            "{student.erp_id}"
           </div>
 
-          <Divider />
+          <div style={{
+            height: 1,
+            background: 'linear-gradient(90deg,transparent,#60a5fa,transparent)',
+            marginBottom: 12,
+          }} />
+
+          {/* QR Code */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center',
+            background: '#FFF8E7',
+            borderRadius: 12, padding: 12, marginBottom: 8,
+          }}>
+            <QRCodeCanvas
+              value={qrValue}
+              size={160}
+              level="H"
+              includeMargin={false}
+            />
+            <p style={{
+              fontFamily: "'Poppins', monospace",
+              color: '#0A0A0A', fontSize: 10, marginTop: 6,
+            }}>
+              {student.erp_id}
+            </p>
+          </div>
 
           <div style={{
             fontFamily: "'Poppins', sans-serif",
-            color: '#FFF8E733', fontSize: 10,
+            color: '#60a5fa55', fontSize: 9,
+            letterSpacing: 2, textAlign: 'center',
           }}>
-            📅 VIGAM 2026 • April 8, 2026
+            8TH APRIL 2026 • VIGAM 2026
           </div>
-        </GoldCard>
+        </div>
+
+        {/* Countdown */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{
+            fontFamily: "'Poppins', sans-serif",
+            color: '#FFF8E766', fontSize: 10,
+            letterSpacing: 3, textTransform: 'uppercase',
+            textAlign: 'center', marginBottom: 10,
+          }}>
+            VIGAM 2026 STARTS IN
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+            {[
+              { v: t.d, l: 'Days' },
+              { v: t.h, l: 'Hrs' },
+              { v: t.m, l: 'Mins' },
+              { v: t.s, l: 'Secs' },
+            ].map(({ v, l }) => (
+              <div key={l} style={{ textAlign: 'center' }}>
+                <div style={{
+                  background: 'rgba(96,165,250,0.1)',
+                  border: '1.5px solid #60a5fa55',
+                  borderRadius: 8, padding: '8px 10px',
+                  fontFamily: "'Cinzel Decorative', serif",
+                  color: '#60a5fa',
+                  fontSize: 'clamp(18px, 5vw, 26px)',
+                  minWidth: 46,
+                }}>
+                  {String(v).padStart(2, '0')}
+                </div>
+                <div style={{
+                  fontFamily: "'Poppins', sans-serif",
+                  color: '#FFF8E744', fontSize: 8,
+                  letterSpacing: 1, marginTop: 4,
+                  textTransform: 'uppercase',
+                }}>
+                  {l}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Volunteer Section */}
         <div style={{
-          background: 'rgba(255,215,0,0.04)',
-          border: '1.5px solid #FFD70033',
+          background: 'rgba(96,165,250,0.04)',
+          border: '1.5px solid #60a5fa22',
           borderRadius: 12, padding: '18px 16px',
           marginBottom: 14, textAlign: 'left',
         }}>
-          <p style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            color: '#FFD700', fontSize: 12, marginBottom: 6,
-          }}>
-            🙋 Want to help organise?
-          </p>
+          
           <p style={{
             fontFamily: "'Poppins', sans-serif",
             color: '#FFF8E766', fontSize: 11, lineHeight: 1.6,
@@ -172,10 +302,29 @@ export default function JuniorSuccess() {
           </p>
         </div>
 
-        <GoldBtn onClick={handleVolunteer}>
-          Yes, I want to volunteer! 🙌
-        </GoldBtn>
+        <div style={{
+          fontFamily: "'Caveat', cursive",
+          color: '#FFF8E766', fontSize: 13,
+          textAlign: 'center', marginTop: 12,
+          cursor: 'pointer',
+        }}
+          onClick={() => {
+            sessionStorage.clear()
+            navigate('/')
+          }}
+        >
+          Thank You →
+        </div>
 
+        <div style={{
+          fontFamily: "'Caveat', cursive",
+          color: '#FFF8E733', fontSize: 20,
+          textAlign: 'center', marginTop: 8,
+        }}>
+          💡 Screenshot your pass! QR coming on WhatsApp soon.
+        </div>
+
+        {/* Back to home */}
         <div
           onClick={() => {
             sessionStorage.clear()
@@ -183,18 +332,12 @@ export default function JuniorSuccess() {
           }}
           style={{
             fontFamily: "'Caveat', cursive",
-            color: '#FFF8E733', fontSize: 14,
-            cursor: 'pointer', marginTop: 14,
+            color: '#60a5fa33', fontSize: 14,
+            textAlign: 'center', marginTop: 16,
+            cursor: 'pointer', paddingBottom: 32,
           }}
         >
-          No thanks, I'll just attend →
-        </div>
-
-        <div style={{
-          fontFamily: "'Caveat', cursive",
-          color: '#FFD70044', fontSize: 12, marginTop: 16,
-        }}>
-          🎬 VIGAM 2026 — Where Bollywood Meets Binary
+          ← Back to Home
         </div>
       </div>
     </div>
