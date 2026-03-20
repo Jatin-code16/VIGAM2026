@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 import QRScanner from './QRScanner'
 
-const CHECKIN_PASSWORD = 'vigam2026gate'
+const CHECKIN_PASSWORD = 'vigam@0804'
 
 export default function CheckIn() {
   const [authed, setAuthed] = useState(false)

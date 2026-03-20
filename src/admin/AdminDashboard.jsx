@@ -6,7 +6,7 @@ import { saveAs } from 'file-saver'
 import toast from 'react-hot-toast'
 import { Grain, Particles, GoldBtn, GoldCard, GoldInput, Divider } from '../components/UI'
 
-const ADMIN_PASSWORD = 'vigam2026admin'
+const ADMIN_PASSWORD = 'jatin@1612'
 
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(false)
