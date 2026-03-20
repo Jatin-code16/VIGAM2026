@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import { QRCodeCanvas } from 'qrcode.react'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import toast from 'react-hot-toast'
+import { Grain, Particles, GoldBtn, GoldCard, GoldInput, Divider } from '../components/UI'
 
-// ============================================
-// CHANGE THIS PASSWORD!
-// ============================================
-const ADMIN_PASSWORD = 'jatin@1612'
+const ADMIN_PASSWORD = 'vigam2026admin'
 
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(false)
@@ -20,35 +17,23 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState('all')
   const [downloading, setDownloading] = useState(false)
   const [stats, setStats] = useState({
-    total: 0,
-    registered: 0,
-    seniors: 0,
-    juniors: 0,
-    present: 0,
-    volunteers: 0,
+    total: 0, registered: 0, seniors: 0,
+    juniors: 0, present: 0, volunteers: 0,
   })
 
-  // Check if already authed in session
   useEffect(() => {
     const saved = sessionStorage.getItem('adminAuthed')
     if (saved === 'true') setAuthed(true)
   }, [])
 
-  // Fetch students when authed
   useEffect(() => {
     if (!authed) return
     fetchStudents()
-
-    // Realtime subscription
     const channel = supabase
       .channel('admin-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'students'
-      }, () => fetchStudents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' },
+        () => fetchStudents())
       .subscribe()
-
     return () => supabase.removeChannel(channel)
   }, [authed])
 
@@ -59,25 +44,18 @@ export default function AdminDashboard() {
       .select('*')
       .order('registered_rank', { ascending: true, nullsFirst: false })
 
-    if (error) {
-      toast.error('Failed to fetch students!')
-      setLoading(false)
-      return
-    }
+    if (error) { toast.error('Failed to fetch!'); setLoading(false); return }
 
     setStudents(data || [])
-
-    // Calculate stats
-    const registered = data.filter(s => s.is_registered)
+    const reg = data.filter(s => s.is_registered)
     setStats({
       total: data.length,
-      registered: registered.length,
-      seniors: registered.filter(s => s.role === 'senior').length,
-      juniors: registered.filter(s => s.role === 'junior').length,
+      registered: reg.length,
+      seniors: reg.filter(s => s.role === 'senior').length,
+      juniors: reg.filter(s => s.role === 'junior').length,
       present: data.filter(s => s.is_present).length,
       volunteers: data.filter(s => s.wants_to_volunteer).length,
     })
-
     setLoading(false)
   }
 
@@ -85,134 +63,94 @@ export default function AdminDashboard() {
     if (password === ADMIN_PASSWORD) {
       setAuthed(true)
       sessionStorage.setItem('adminAuthed', 'true')
-      toast.success('Welcome, Admin! 👋')
+      toast.success('Welcome, Director! 🎬')
     } else {
-      toast.error('Wrong password!')
+      toast.error('Wrong password! Retake needed. 🎬')
     }
   }
 
-  // Export CSV
   const exportCSV = () => {
     const headers = ['ERP ID', 'Name', 'Branch', 'Year', 'Role', 'Phone', 'Superlative', 'Registered At', 'Is Present', 'Checked In At']
     const rows = students
       .filter(s => s.is_registered)
       .map(s => [
-        s.erp_id,
-        s.name,
-        s.branch,
-        s.year,
-        s.role,
-        s.phone,
+        s.erp_id, s.name, s.branch, s.year, s.role, s.phone,
         s.superlative || '',
         s.registered_at ? new Date(s.registered_at).toLocaleString() : '',
         s.is_present ? 'Yes' : 'No',
         s.checked_in_at ? new Date(s.checked_in_at).toLocaleString() : '',
       ])
-
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     saveAs(blob, 'vigam2026_attendance.csv')
     toast.success('CSV exported! ✅')
   }
 
-  // Download all QRs as ZIP
   const downloadQRsAsZip = async () => {
     setDownloading(true)
     toast('Generating QR ZIP... this may take a minute!', { icon: '⏳' })
-
     const registered = students.filter(s => s.is_registered)
     const zip = new JSZip()
     const qrFolder = zip.folder('VIGAM2026_QRs')
 
     for (const student of registered) {
       try {
-        // Create canvas for each QR
         const canvas = document.createElement('canvas')
         canvas.width = 400
         canvas.height = 500
-
         const ctx = canvas.getContext('2d')
-
-        // Background
-        ctx.fillStyle = '#000000'
+        ctx.fillStyle = '#0A0A0A'
         ctx.fillRect(0, 0, 400, 500)
-
-        // Gold border
         ctx.strokeStyle = '#FFD700'
         ctx.lineWidth = 4
         ctx.strokeRect(10, 10, 380, 480)
-
-        // Title
         ctx.fillStyle = '#FFD700'
-        ctx.font = 'bold 24px Arial'
+        ctx.font = 'bold 22px Arial'
         ctx.textAlign = 'center'
         ctx.fillText('VIGAM 2026', 200, 50)
-
-        // Name
-        ctx.fillStyle = '#FFFFFF'
-        ctx.font = 'bold 18px Arial'
+        ctx.fillStyle = '#FFF8E7'
+        ctx.font = 'bold 16px Arial'
         ctx.fillText(student.name, 200, 80)
+        ctx.fillStyle = '#FFD70088'
+        ctx.font = '12px Arial'
+        ctx.fillText(`${student.branch} | ${student.erp_id}`, 200, 102)
 
-        // Branch + ERP
-        ctx.fillStyle = '#999999'
-        ctx.font = '14px Arial'
-        ctx.fillText(`${student.branch} | ${student.erp_id}`, 200, 105)
-
-        // QR Code using qrcode library
         const QRCodeLib = await import('qrcode')
         const qrDataUrl = await QRCodeLib.toDataURL(
           `VIGAM2026|${student.erp_id}|${student.name}`,
           { width: 280, margin: 1 }
         )
-
-        // Draw QR on canvas
         const qrImg = new Image()
-        await new Promise((resolve) => {
-          qrImg.onload = resolve
-          qrImg.src = qrDataUrl
-        })
+        await new Promise(resolve => { qrImg.onload = resolve; qrImg.src = qrDataUrl })
         ctx.drawImage(qrImg, 60, 120, 280, 280)
 
-        // Superlative
         if (student.superlative) {
           ctx.fillStyle = '#FFD700'
-          ctx.font = 'italic 12px Arial'
-          ctx.textAlign = 'center'
-          const words = student.superlative.split(' ')
-          const line1 = words.slice(0, 4).join(' ')
-          const line2 = words.slice(4).join(' ')
-          ctx.fillText(line1, 200, 430)
-          if (line2) ctx.fillText(line2, 200, 450)
+          ctx.font = 'italic 11px Arial'
+          ctx.fillText(student.superlative.slice(0, 50), 200, 430)
         }
+        ctx.fillStyle = '#FFD70055'
+        ctx.font = '11px Arial'
+        ctx.fillText('April 8, 2026 • VIGAM 2026', 200, 478)
 
-        // Date
-        ctx.fillStyle = '#666666'
-        ctx.font = '12px Arial'
-        ctx.fillText('April 8, 2026', 200, 480)
-
-        // Convert to blob and add to ZIP
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
         qrFolder.file(`${student.erp_id}_${student.name.replace(/\s/g, '_')}.png`, blob)
-
       } catch (err) {
-        console.log(`Failed QR for ${student.erp_id}:`, err)
+        console.log(`Failed QR for ${student.erp_id}`)
       }
     }
 
-    // Generate and download ZIP
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     saveAs(zipBlob, 'VIGAM2026_QR_Passes.zip')
     setDownloading(false)
     toast.success(`Downloaded ${registered.length} QR passes! ✅`)
   }
 
-  // Filter students
   const filteredStudents = students.filter(s => {
     const matchesSearch =
       s.name?.toLowerCase().includes(search.toLowerCase()) ||
       s.erp_id?.toLowerCase().includes(search.toLowerCase()) ||
       s.branch?.toLowerCase().includes(search.toLowerCase())
-
     if (filter === 'all') return matchesSearch
     if (filter === 'seniors') return matchesSearch && s.role === 'senior'
     if (filter === 'juniors') return matchesSearch && s.role === 'junior'
@@ -223,258 +161,426 @@ export default function AdminDashboard() {
   })
 
   // ============================================
-  // LOGIN SCREEN
+  // LOGIN
   // ============================================
   if (!authed) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center px-6">
-        <motion.div
-          className="w-full max-w-sm"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🔐</div>
-            <h1 className="text-3xl font-black text-white">
-              Admin <span className="text-yellow-400">Access</span>
+      <div style={{
+        minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 24, position: 'relative',
+      }}>
+        <Particles />
+        <Grain />
+        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 340 }}>
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <div style={{ fontSize: 52, marginBottom: 8 }}>🎬</div>
+            <h1 style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              color: '#FFD700', fontSize: 22,
+              textShadow: '0 0 20px #FFD70055', marginBottom: 6,
+            }}>
+              Director's Access
             </h1>
-            <p className="text-white/40 text-sm mt-2">
-              VIGAM 2026 Control Panel
+            <p style={{
+              fontFamily: "'Caveat', cursive",
+              color: '#FFD70077', fontSize: 14,
+            }}>
+              VIGAM 2026 Control Room
             </p>
           </div>
 
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            placeholder="Enter admin password"
-            className="w-full bg-white/5 border border-white/20 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-yellow-400/60 mb-4"
-          />
-
-          <button
-            onClick={handleLogin}
-            className="w-full bg-yellow-400 text-black font-black text-lg py-4 rounded-2xl"
-          >
-            Enter Dashboard →
-          </button>
-        </motion.div>
+          <GoldCard>
+            <div style={{ marginBottom: 14 }}>
+              <GoldInput
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                placeholder="Enter director's password..."
+              />
+            </div>
+            <GoldBtn onClick={handleLogin}>
+              Enter Control Room →
+            </GoldBtn>
+          </GoldCard>
+        </div>
       </div>
     )
   }
 
   // ============================================
-  // MAIN DASHBOARD
+  // DASHBOARD
   // ============================================
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div style={{ minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7', position: 'relative' }}>
+      <Grain />
 
       {/* Header */}
-      <div className="bg-black border-b border-yellow-400/20 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div style={{
+        background: '#0A0A0A',
+        borderBottom: '1px solid #FFD70033',
+        padding: '14px 24px',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'sticky', top: 0, zIndex: 10,
+      }}>
         <div>
-          <h1 className="text-xl font-black text-yellow-400">VIGAM 2026</h1>
-          <p className="text-white/40 text-xs">Admin Dashboard</p>
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#FFD700', fontSize: 16,
+            textShadow: '0 0 10px #FFD70055',
+          }}>
+            🎬 VIGAM 2026
+          </div>
+          <div style={{
+            fontFamily: "'Caveat', cursive",
+            color: '#FFD70055', fontSize: 12,
+          }}>
+            Director's Control Room
+          </div>
         </div>
-        <div className="flex gap-3">
+        <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={exportCSV}
-            className="bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm active:scale-95 transition-transform"
+            style={{
+              background: 'rgba(34,197,94,0.15)',
+              border: '1px solid rgba(34,197,94,0.4)',
+              color: '#4ade80',
+              padding: '8px 14px', borderRadius: 8,
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: 11, cursor: 'pointer',
+            }}
           >
             📊 Export CSV
           </button>
           <button
             onClick={downloadQRsAsZip}
             disabled={downloading}
-            className="bg-yellow-400 text-black font-bold px-4 py-2 rounded-xl text-sm active:scale-95 transition-transform disabled:opacity-50"
+            style={{
+              background: downloading ? 'rgba(255,215,0,0.05)' : 'rgba(255,215,0,0.15)',
+              border: '1px solid #FFD70044',
+              color: '#FFD700',
+              padding: '8px 14px', borderRadius: 8,
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: 11, cursor: downloading ? 'not-allowed' : 'pointer',
+              opacity: downloading ? 0.5 : 1,
+            }}
           >
             {downloading ? '⏳ Generating...' : '📦 Download QRs'}
           </button>
         </div>
       </div>
 
-      <div className="px-6 py-6 max-w-7xl mx-auto">
+      <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 10, marginBottom: 24,
+        }}>
           {[
-            { label: 'Total Students', value: stats.total, color: 'text-white', bg: 'bg-white/5' },
-            { label: 'Registered', value: stats.registered, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-            { label: 'Seniors', value: stats.seniors, color: 'text-orange-400', bg: 'bg-orange-400/10' },
-            { label: 'Juniors', value: stats.juniors, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-            { label: 'Present', value: stats.present, color: 'text-green-400', bg: 'bg-green-400/10' },
-            { label: 'Volunteers', value: stats.volunteers, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className={`${stat.bg} border border-white/10 rounded-2xl p-4 text-center`}
-            >
-              <p className={`${stat.color} text-3xl font-black`}>{stat.value}</p>
-              <p className="text-white/40 text-xs mt-1">{stat.label}</p>
+            { label: 'Total Students', value: stats.total, color: '#FFF8E7' },
+            { label: 'Registered', value: stats.registered, color: '#FFD700' },
+            { label: 'Seniors', value: stats.seniors, color: '#fb923c' },
+            { label: 'Juniors', value: stats.juniors, color: '#60a5fa' },
+            { label: 'Present', value: stats.present, color: '#4ade80' },
+            { label: 'Volunteers', value: stats.volunteers, color: '#c084fc' },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid #FFD70022',
+              borderRadius: 12, padding: '16px 12px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontFamily: "'Cinzel Decorative', serif",
+                color: stat.color, fontSize: 28, fontWeight: 900,
+              }}>
+                {stat.value}
+              </div>
+              <div style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFF8E744', fontSize: 10, marginTop: 4,
+                letterSpacing: 1,
+              }}>
+                {stat.label}
+              </div>
             </div>
           ))}
         </div>
 
         {/* Search + Filter */}
-        <div className="flex flex-col md:flex-row gap-3 mb-6">
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, ERP, or branch..."
-            className="flex-1 bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-400/60"
+            style={{
+              flex: 1, minWidth: 200,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid #FFD70033',
+              borderRadius: 8, padding: '10px 14px',
+              color: '#FFF8E7',
+              fontFamily: "'Poppins', sans-serif", fontSize: 13,
+            }}
           />
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none"
+            onChange={e => setFilter(e.target.value)}
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid #FFD70033',
+              borderRadius: 8, padding: '10px 14px',
+              color: '#FFF8E7',
+              fontFamily: "'Poppins', sans-serif", fontSize: 13,
+            }}
           >
-            <option value="all">All Students</option>
-            <option value="registered">Registered Only</option>
-            <option value="seniors">Seniors Only</option>
-            <option value="juniors">Juniors Only</option>
-            <option value="present">Present at Event</option>
-            <option value="volunteers">Volunteers</option>
+            <option value="all" style={{ background: '#0A0A0A' }}>All Students</option>
+            <option value="registered" style={{ background: '#0A0A0A' }}>Registered</option>
+            <option value="seniors" style={{ background: '#0A0A0A' }}>Seniors</option>
+            <option value="juniors" style={{ background: '#0A0A0A' }}>Juniors</option>
+            <option value="present" style={{ background: '#0A0A0A' }}>Present</option>
+            <option value="volunteers" style={{ background: '#0A0A0A' }}>Volunteers</option>
           </select>
-        </div>
-
-        {/* Refresh Button */}
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-white/40 text-sm">
-            Showing {filteredStudents.length} students
-          </p>
           <button
             onClick={fetchStudents}
-            className="text-yellow-400/60 text-sm underline"
+            style={{
+              background: 'rgba(255,215,0,0.1)',
+              border: '1px solid #FFD70033',
+              color: '#FFD700', padding: '10px 16px',
+              borderRadius: 8, cursor: 'pointer',
+              fontFamily: "'Poppins', sans-serif", fontSize: 12,
+            }}
           >
             🔄 Refresh
           </button>
         </div>
 
-        {/* Students Table */}
+        <div style={{
+          fontFamily: "'Poppins', sans-serif",
+          color: '#FFD70055', fontSize: 11,
+          marginBottom: 12, letterSpacing: 1,
+        }}>
+          Showing {filteredStudents.length} students
+        </div>
+
+        {/* Table */}
         {loading ? (
-          <div className="text-center py-20">
-            <motion.div
-              className="text-5xl mb-4"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            >
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              color: '#FFD700', fontSize: 32,
+              animation: 'stamp 0.5s ease infinite alternate',
+            }}>
               🎬
-            </motion.div>
-            <p className="text-white/40">Loading students...</p>
+            </div>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFD70055', marginTop: 12,
+            }}>
+              Loading students...
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full">
+          <div style={{
+            border: '1px solid #FFD70022',
+            borderRadius: 12, overflow: 'auto',
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="bg-white/5 border-b border-white/10">
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Rank</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Student</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Branch</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Role</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Photo</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">QR</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Status</th>
-                  <th className="px-4 py-3 text-left text-white/40 text-xs uppercase tracking-widest">Present</th>
+                <tr style={{ borderBottom: '1px solid #FFD70022' }}>
+                  {['Rank', 'Student', 'Branch', 'Role', 'Photo', 'QR', 'Status', 'Present'].map(h => (
+                    <th key={h} style={{
+                      padding: '12px 16px', textAlign: 'left',
+                      fontFamily: "'Poppins', sans-serif",
+                      color: '#FFD70066', fontSize: 10,
+                      letterSpacing: 2, textTransform: 'uppercase',
+                      background: 'rgba(255,215,0,0.03)',
+                    }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student, index) => (
-                  <motion.tr
+                {filteredStudents.map((student) => (
+                  <tr
                     key={student.erp_id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.02 }}
+                    style={{ borderBottom: '1px solid #FFD70011' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,215,0,0.03)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     {/* Rank */}
-                    <td className="px-4 py-3">
-                      <span className="text-yellow-400 font-bold">
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        fontFamily: "'Cinzel Decorative', serif",
+                        color: '#FFD700', fontSize: 12,
+                      }}>
                         {student.registered_rank ? `#${student.registered_rank}` : '—'}
                       </span>
                     </td>
 
                     {/* Student */}
-                    <td className="px-4 py-3">
-                      <p className="text-white font-bold">{student.name}</p>
-                      <p className="text-white/40 text-xs font-mono">{student.erp_id}</p>
-                      <p className="text-white/30 text-xs">{student.phone}</p>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{
+                        fontFamily: "'Poppins', sans-serif",
+                        color: '#FFF8E7', fontWeight: 600, fontSize: 13,
+                      }}>
+                        {student.name}
+                      </div>
+                      <div style={{
+                        fontFamily: "'Poppins', monospace",
+                        color: '#FFD70066', fontSize: 10,
+                      }}>
+                        {student.erp_id}
+                      </div>
+                      <div style={{
+                        fontFamily: "'Poppins', sans-serif",
+                        color: '#FFF8E733', fontSize: 10,
+                      }}>
+                        {student.phone}
+                      </div>
                     </td>
 
                     {/* Branch */}
-                    <td className="px-4 py-3">
-                      <span className="text-white/70 text-sm">{student.branch}</span>
-                      <p className="text-white/30 text-xs">Year {student.year}</p>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{
+                        fontFamily: "'Poppins', sans-serif",
+                        color: '#FFF8E7aa', fontSize: 12,
+                      }}>
+                        {student.branch}
+                      </div>
+                      <div style={{
+                        fontFamily: "'Poppins', sans-serif",
+                        color: '#FFF8E744', fontSize: 10,
+                      }}>
+                        Year {student.year}
+                      </div>
                     </td>
 
                     {/* Role */}
-                    <td className="px-4 py-3">
-                      <span className={`
-                        text-xs font-bold px-2 py-1 rounded-full
-                        ${student.role === 'senior'
-                          ? 'bg-yellow-400/20 text-yellow-400'
-                          : 'bg-blue-400/20 text-blue-400'}
-                      `}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        fontFamily: "'Poppins', sans-serif",
+                        fontSize: 10, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 20,
+                        background: student.role === 'senior'
+                          ? 'rgba(255,215,0,0.15)'
+                          : 'rgba(96,165,250,0.15)',
+                        color: student.role === 'senior' ? '#FFD700' : '#60a5fa',
+                        border: `1px solid ${student.role === 'senior' ? '#FFD70033' : '#60a5fa33'}`,
+                      }}>
                         {student.role === 'senior' ? '🎓 Senior' : '⚡ Junior'}
                       </span>
                     </td>
 
                     {/* Photo */}
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '12px 16px' }}>
                       {student.photo_url ? (
                         <img
                           src={student.photo_url}
                           alt={student.name}
-                          className="w-10 h-10 rounded-full object-cover border border-yellow-400/30"
+                          style={{
+                            width: 36, height: 36,
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '1.5px solid #FFD70044',
+                          }}
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/20 text-xs">
-                          No photo
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%',
+                          background: 'rgba(255,215,0,0.05)',
+                          border: '1px solid #FFD70022',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#FFD70033', fontSize: 10,
+                        }}>
+                          —
                         </div>
                       )}
                     </td>
 
                     {/* QR */}
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '12px 16px' }}>
                       {student.is_registered ? (
-                        <div className="bg-white p-1 rounded-lg inline-block">
+                        <div style={{
+                          background: '#FFF8E7',
+                          padding: 4, borderRadius: 6,
+                          display: 'inline-block',
+                        }}>
                           <QRCodeCanvas
                             value={`VIGAM2026|${student.erp_id}|${student.name}`}
-                            size={50}
+                            size={40}
                           />
                         </div>
                       ) : (
-                        <span className="text-white/20 text-xs">Not registered</span>
+                        <span style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#FFF8E722', fontSize: 10,
+                        }}>
+                          Not registered
+                        </span>
                       )}
                     </td>
 
                     {/* Status */}
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '12px 16px' }}>
                       {student.is_registered ? (
-                        <span className="text-green-400 text-xs font-bold">✅ Registered</span>
+                        <span style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#4ade80', fontSize: 11, fontWeight: 600,
+                        }}>
+                          ✅ Registered
+                        </span>
                       ) : (
-                        <span className="text-white/30 text-xs">⬜ Pending</span>
+                        <span style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#FFF8E733', fontSize: 11,
+                        }}>
+                          ⬜ Pending
+                        </span>
                       )}
                       {student.wants_to_volunteer && (
-                        <p className="text-purple-400 text-xs mt-1">🙋 Volunteer</p>
+                        <div style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#c084fc', fontSize: 10, marginTop: 2,
+                        }}>
+                          🙋 Volunteer
+                        </div>
                       )}
                     </td>
 
                     {/* Present */}
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '12px 16px' }}>
                       {student.is_present ? (
-                        <span className="text-green-400 font-bold text-sm">✅ Present</span>
+                        <span style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#4ade80', fontWeight: 700, fontSize: 13,
+                        }}>
+                          ✅
+                        </span>
                       ) : (
-                        <span className="text-white/20 text-sm">—</span>
+                        <span style={{ color: '#FFF8E722' }}>—</span>
                       )}
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))}
               </tbody>
             </table>
 
             {filteredStudents.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-white/30">No students found</p>
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🎬</div>
+                <p style={{
+                  fontFamily: "'Caveat', cursive",
+                  color: '#FFD70055', fontSize: 16,
+                }}>
+                  No students found in this scene!
+                </p>
               </div>
             )}
           </div>
