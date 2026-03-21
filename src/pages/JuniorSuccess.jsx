@@ -202,7 +202,7 @@ export default function JuniorSuccess() {
             fontFamily: "'Cinzel Decorative', serif",
             color: '#60a5fa', fontSize: 11, letterSpacing: 2,
           }}>
-            🎬 VIGAM 2026 — ENTRY PASS
+            🎬 VIGAM 2026 - ENTRY PASS
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",

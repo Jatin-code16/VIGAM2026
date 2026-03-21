@@ -92,7 +92,7 @@ export async function onRequestPost(context) {
       body: JSON.stringify({
         sender: {
           name: 'VIGAM 2026',
-          email: '6605029@rungta.org',
+          email: 'jatinnaiknawa2@gmail.com',
         },
         to: [{ email, name }],
         subject: `🎬 VIGAM 2026 - Registration Confirmed, ${name}!`,

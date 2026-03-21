@@ -236,7 +236,7 @@ export default function SuccessPass() {
             fontFamily: "'Cinzel Decorative', serif",
             color: '#FFD700', fontSize: 11, letterSpacing: 2,
           }}>
-            🎬 VIGAM 2026 — OFFICIAL PASS
+            🎬 VIGAM 2026 - OFFICIAL PASS
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",
