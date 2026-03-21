@@ -336,10 +336,13 @@ export default function JuniorSuccess() {
         {/* Email note */}
         <div style={{
           fontFamily: "'Caveat', cursive",
-          color: '#60a5fa55', fontSize: 13,
+          color: '#FFD70055', fontSize: 13,
           textAlign: 'center', marginBottom: 16,
         }}>
-          📧 Check your institute email for confirmation!
+          📧 Check your institute email!<br/>
+          <span style={{ fontSize: 11, color: '#FFD70033' }}>
+            If not found, check spam folder and mark as "Not Spam"
+          </span>
         </div>
 
         {/* Back to Home */}
