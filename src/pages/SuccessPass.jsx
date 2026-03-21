@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
-import { Grain, Particles, GoldBtn, Divider } from '../components/UI'
+import { Grain, Particles, Divider } from '../components/UI'
 
 function useCountdown(targetDate) {
   const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
@@ -30,7 +30,34 @@ export default function SuccessPass() {
   const [saving, setSaving] = useState(true)
   const [rank, setRank] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [emailSent, setEmailSent] = useState(false)
   const t = useCountdown('2026-04-08T18:00:00')
+
+  // Send confirmation email
+  const sendConfirmationEmail = async (studentData, qrValue) => {
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: studentData.name,
+          email: studentData.email,
+          erp_id: studentData.erp_id,
+          branch: studentData.branch,
+          role: studentData.role,
+          superlative: studentData.superlative || '',
+          qr_data: qrValue,
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setEmailSent(true)
+        toast.success('Confirmation email sent! 📧')
+      }
+    } catch (err) {
+      console.log('Email failed silently:', err)
+    }
+  }
 
   useEffect(() => {
     const register = async () => {
@@ -58,7 +85,8 @@ export default function SuccessPass() {
           const { error: uploadError } = await supabase.storage
             .from('photos').upload(fileName, blob, { contentType: photoType })
           if (!uploadError) {
-            const { data: urlData } = supabase.storage.from('photos').getPublicUrl(fileName)
+            const { data: urlData } = supabase.storage
+              .from('photos').getPublicUrl(fileName)
             photoUrl = urlData.publicUrl
           }
         }
@@ -78,6 +106,7 @@ export default function SuccessPass() {
             photo_url: photoUrl,
             superlative: parsed.superlative,
             phone: parsed.phone,
+            email: parsed.email,
             is_registered: true,
             registered_at: new Date().toISOString(),
             registered_rank: registrationRank,
@@ -90,8 +119,16 @@ export default function SuccessPass() {
           return
         }
 
-        setStudent({ ...parsed, registered_rank: registrationRank })
+        const updatedStudent = { ...parsed, registered_rank: registrationRank }
+        setStudent(updatedStudent)
         setSaving(false)
+
+        // Send confirmation email
+        const qrValue = `VIGAM2026|${parsed.erp_id}|${parsed.name}`
+        await sendConfirmationEmail(updatedStudent, qrValue)
+
+        // Clear session after 30 seconds
+        setTimeout(() => sessionStorage.clear(), 30000)
 
       } catch (err) {
         toast.error('Something went wrong!')
@@ -170,6 +207,21 @@ export default function SuccessPass() {
             Welcome to your last chapter, {student.name}.<br />
             The best scene is still coming.
           </p>
+
+          {/* Email sent indicator */}
+          {emailSent && (
+            <div style={{
+              display: 'inline-block',
+              background: 'rgba(74,222,128,0.1)',
+              border: '1px solid rgba(74,222,128,0.3)',
+              borderRadius: 20, padding: '4px 14px',
+              fontFamily: "'Poppins', sans-serif",
+              color: '#4ade80', fontSize: 11,
+              marginTop: 8,
+            }}>
+              📧 Confirmation email sent!
+            </div>
+          )}
         </div>
 
         {/* Digital Pass */}
@@ -230,7 +282,8 @@ export default function SuccessPass() {
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",
-            color: '#FFD70099', fontSize: 11, textAlign: 'center',
+            color: '#FFD70099', fontSize: 11,
+            textAlign: 'center',
           }}>
             {student.branch} • #{rank} to Register
           </div>
@@ -326,7 +379,23 @@ export default function SuccessPass() {
           color: '#FFD70055', fontSize: 13,
           textAlign: 'center', marginBottom: 16,
         }}>
-          🔥 Your QR will be sent on WhatsApp before the event!
+          📧 Check your institute email for confirmation!
+        </div>
+
+        {/* Back to Home */}
+        <div
+          onClick={() => {
+            sessionStorage.clear()
+            navigate('/')
+          }}
+          style={{
+            fontFamily: "'Caveat', cursive",
+            color: '#FFD70033', fontSize: 14,
+            textAlign: 'center',
+            cursor: 'pointer', paddingBottom: 32,
+          }}
+        >
+          ← Back to Home
         </div>
 
       </div>

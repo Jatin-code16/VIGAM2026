@@ -29,7 +29,11 @@ export default function ProfileConfirm() {
       toast.error('Please enter a valid 10-digit phone number!')
       return
     }
-    const updated = { ...student, phone }
+
+    // Auto generate email from ERP ID
+    const email = `${student.erp_id}@rungta.org`
+
+    const updated = { ...student, phone, email }
     sessionStorage.setItem('studentData', JSON.stringify(updated))
 
     if (student.role === 'senior') {
@@ -40,6 +44,9 @@ export default function ProfileConfirm() {
   }
 
   if (!student) return null
+
+  // Auto generated email
+  const autoEmail = `${student?.erp_id}@rungta.org`
 
   return (
     <div style={{
@@ -118,6 +125,30 @@ export default function ProfileConfirm() {
                 </div>
               ))}
 
+              {/* Email — auto generated */}
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                gap: 12, marginBottom: 14,
+              }}>
+                <span style={{ fontSize: 20 }}>📧</span>
+                <div>
+                  <div style={{
+                    fontFamily: "'Poppins', sans-serif",
+                    color: '#FFD70077', fontSize: 9,
+                    letterSpacing: 2, textTransform: 'uppercase',
+                    marginBottom: 2,
+                  }}>
+                    Email (auto)
+                  </div>
+                  <div style={{
+                    fontFamily: "'Playfair Display', serif",
+                    color: '#FFF8E7aa', fontSize: 13,
+                  }}>
+                    {autoEmail}
+                  </div>
+                </div>
+              </div>
+
               {/* Phone */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ fontSize: 20 }}>📱</span>
@@ -133,6 +164,7 @@ export default function ProfileConfirm() {
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     maxLength={10}
+                    placeholder="10 digit mobile number"
                     style={{
                       background: 'rgba(255,215,0,0.07)',
                       border: '1px solid #FFD70044',
