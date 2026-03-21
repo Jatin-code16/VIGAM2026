@@ -3,7 +3,6 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -15,15 +14,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Generate QR code as base64 image
+    // Generate QR code as base64
     const QRCode = await import('qrcode')
     const qrBase64 = await QRCode.toDataURL(
       qr_data || `VIGAM2026|${erp_id}|${name}`,
       { width: 300, margin: 2 }
     )
     const qrBuffer = Buffer.from(qrBase64.split(',')[1], 'base64')
+    const qrBase64Clean = qrBuffer.toString('base64')
 
-    // Email content based on role
     const isSenior = role === 'senior'
 
     const htmlContent = `
@@ -34,7 +33,6 @@ export default async function handler(req, res) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body style="margin:0;padding:0;background:#0A0A0A;font-family:'Georgia',serif;">
-  
   <div style="max-width:500px;margin:0 auto;padding:20px;">
     
     <!-- Header -->
@@ -44,11 +42,9 @@ export default async function handler(req, res) {
       <p style="color:#FFF8E7;font-size:14px;margin:6px 0 0;font-style:italic;">Where Bollywood Meets Binary</p>
     </div>
 
-    <!-- Success Message -->
+    <!-- Success -->
     <div style="text-align:center;margin-bottom:20px;">
-      <h2 style="color:#FFF8E7;font-size:20px;">
-        ✅ Registration Confirmed!
-      </h2>
+      <h2 style="color:#FFF8E7;font-size:20px;">✅ Registration Confirmed!</h2>
       <p style="color:#FFF8E7aa;font-size:14px;line-height:1.6;">
         Hey <strong style="color:#FFD700;">${name}</strong>! 🌟<br/>
         You're officially registered for VIGAM 2026!
@@ -63,7 +59,7 @@ export default async function handler(req, res) {
         <p style="color:#FFF8E7;font-size:18px;margin:0;font-weight:bold;">${name}</p>
       </div>
 
-      <div style="display:flex;gap:20px;border-bottom:1px solid #FFD70033;padding-bottom:14px;margin-bottom:14px;">
+      <div style="display:flex;gap:20px;border-bottom:1px solid #FFD70033;padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;">
         <div>
           <p style="color:#FFD70077;font-size:10px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">Branch</p>
           <p style="color:#FFF8E7;font-size:15px;margin:0;">${branch}</p>
@@ -120,27 +116,40 @@ export default async function handler(req, res) {
 </body>
 </html>`
 
-    // Send email
-    const { data, error } = await resend.emails.send({
-      from: 'VIGAM 2026 <onboarding@resend.dev>',
-      to: email,
-      subject: `🎬 VIGAM 2026 — Registration Confirmed, ${name}!`,
-      html: htmlContent,
-      attachments: [
-        {
-          filename: `VIGAM2026_${erp_id}_Pass.png`,
-          content: qrBuffer,
-        }
-      ]
+    // Send via Brevo
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'VIGAM 2026',
+          email: '6605029@rungta.org', // Use your Gmail here
+        },
+        to: [{ email, name }],
+        subject: `🎬 VIGAM 2026 — Registration Confirmed, ${name}!`,
+        htmlContent,
+        attachment: [
+          {
+            name: `VIGAM2026_${erp_id}_Pass.png`,
+            content: qrBase64Clean,
+          }
+        ]
+      })
     })
 
-    if (error) {
-      console.error('Resend error:', error)
-      return res.status(500).json({ success: false, error })
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('Brevo error:', data)
+      return res.status(500).json({ success: false, error: data })
     }
 
     console.log(`✅ Email sent to ${email}`)
-    return res.status(200).json({ success: true, data })
+    return res.status(200).json({ success: true })
 
   } catch (err) {
     console.error('Email error:', err)
