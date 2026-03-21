@@ -146,6 +146,42 @@ export default function AdminDashboard() {
     toast.success(`Downloaded ${registered.length} QR passes! ✅`)
   }
 
+  const downloadPhotosAsZip = async () => {
+    const registered = students.filter(s => s.is_registered && s.photo_url)
+
+    if (registered.length === 0) {
+      toast.error('No photos found!')
+      return
+    }
+
+    toast(`Downloading ${registered.length} photos...`, { icon: '⏳' })
+
+    const zip = new JSZip()
+    const photoFolder = zip.folder('VIGAM2026_Photos')
+    let downloaded = 0
+    let failed = 0
+
+    for (const student of registered) {
+      try {
+        const response = await fetch(student.photo_url)
+        const blob = await response.blob()
+        const ext = blob.type.includes('png') ? 'png' : 'jpg'
+        photoFolder.file(
+          `${student.branch}_${student.erp_id}_${student.name.replace(/\s/g, '_')}.${ext}`,
+          blob
+        )
+        downloaded++
+      } catch (err) {
+        failed++
+        console.log(`Failed photo for ${student.erp_id}`)
+      }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    saveAs(zipBlob, 'VIGAM2026_Photos.zip')
+    toast.success(`Downloaded ${downloaded} photos! ✅`)
+  }
+
   const filteredStudents = students.filter(s => {
     const matchesSearch =
       s.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -268,6 +304,19 @@ export default function AdminDashboard() {
             }}
           >
             {downloading ? '⏳ Generating...' : '📦 Download QRs'}
+          </button>
+          <button
+            onClick={downloadPhotosAsZip}
+            style={{
+              background: 'rgba(192,132,252,0.15)',
+              border: '1px solid #c084fc44',
+              color: '#c084fc',
+              padding: '8px 14px', borderRadius: 8,
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: 11, cursor: 'pointer',
+            }}
+          >
+            📸 Download Photos
           </button>
         </div>
       </div>
