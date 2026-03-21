@@ -94,13 +94,17 @@ export async function onRequest(context) {
       ` : ''}
 
       <div style="background:#FFF8E7;border-radius:12px;padding:16px;text-align:center;">
-        <p style="color:#0A0A0A;font-size:13px;margin:0 0 8px;font-weight:bold;">🎟️ Your QR Pass</p>
-        <p style="color:#0A0A0A;font-size:12px;margin:0;font-family:monospace;">${erp_id}</p>
-        <p style="color:#555;font-size:11px;margin:8px 0 0;">
-          Your QR pass is shown on the registration screen.<br/>
-          Screenshot it and bring it to the event!
+        <p style="color:#0A0A0A;font-size:13px;margin:0 0 12px;font-weight:bold;">🎟️ Your Entry QR Pass</p>
+        <img 
+            src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr_data)}&bgcolor=FFFFF8&color=000000&margin=10"
+            alt="QR Pass"
+            style="width:200px;height:200px;display:block;margin:0 auto;"
+        />
+        <p style="color:#0A0A0A;font-size:11px;margin:10px 0 0;font-family:monospace;">${erp_id}</p>
+        <p style="color:#555;font-size:11px;margin:6px 0 0;">
+            Screenshot this QR and show it at the gate!
         </p>
-      </div>
+    </div>
 
       <p style="color:#FFF8E755;font-size:10px;text-align:center;margin:12px 0 0;letter-spacing:1px;">
         SHOW QR AT THE GATE - APRIL 8, 2026
