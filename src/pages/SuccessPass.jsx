@@ -36,7 +36,7 @@ export default function SuccessPass() {
   // Send confirmation email
   const sendConfirmationEmail = async (studentData, qrValue) => {
     try {
-      const response = await fetch('/api/send-email', {
+      const response = await fetch('${import.meta.env.VITE_APP_URL}/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
