@@ -1,34 +1,13 @@
-const QRCode = require('qrcode')
-
-module.exports = async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end()
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  const { name, email, erp_id, branch, role, superlative, qr_data } = req.body
-
-  if (!name || !email || !erp_id) {
-    return res.status(400).json({ error: 'Missing required fields' })
-  }
-
+export async function onRequestPost(context) {
   try {
-    // Generate QR
-    const qrBase64 = await QRCode.toDataURL(
-      qr_data || `VIGAM2026|${erp_id}|${name}`,
-      { width: 300, margin: 2 }
-    )
-    const qrBuffer = Buffer.from(qrBase64.split(',')[1], 'base64')
-    const qrBase64Clean = qrBuffer.toString('base64')
+    const { name, email, erp_id, branch, role, superlative, qr_data } = await context.request.json()
+
+    if (!name || !email || !erp_id) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
 
     const isSenior = role === 'senior'
 
@@ -69,7 +48,7 @@ module.exports = async function handler(req, res) {
       </div>
 
       <div style="border-bottom:1px solid #FFD70033;padding-bottom:14px;margin-bottom:14px;">
-        <p style="color:#FFD70077;font-size:10px;letter-spacing:2px;margin:0 0 4px;text-transform:uppercase;">ERP ID</p>
+        <p style="color:#FFD70077;font-size:10px;letter-spacing:2px;margin:0 0 44px;text-transform:uppercase;">ERP ID</p>
         <p style="color:#FFF8E7;font-size:15px;margin:0;font-family:monospace;">${erp_id}</p>
       </div>
 
@@ -85,13 +64,8 @@ module.exports = async function handler(req, res) {
       </div>
       ` : ''}
 
-      <div style="text-align:center;background:#FFF8E7;border-radius:12px;padding:16px;">
-        <img src="cid:qrcode" alt="QR Pass" style="width:200px;height:200px;"/>
-        <p style="color:#0A0A0A;font-size:11px;margin:8px 0 0;font-family:monospace;">${erp_id}</p>
-      </div>
-
       <p style="color:#FFF8E755;font-size:10px;text-align:center;margin:12px 0 0;letter-spacing:1px;">
-        SHOW THIS QR AT THE GATE - APRIL 8, 2026
+        SHOW YOUR QR AT THE GATE - APRIL 8, 2026
       </p>
     </div>
 
@@ -103,17 +77,16 @@ module.exports = async function handler(req, res) {
         </span>
       </p>
     </div>
-
   </div>
 </body>
 </html>`
 
     // Send via Brevo
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
+        'api-key': context.env.BREVO_API_KEY,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
@@ -124,33 +97,44 @@ module.exports = async function handler(req, res) {
         to: [{ email, name }],
         subject: `🎬 VIGAM 2026 - Registration Confirmed, ${name}!`,
         htmlContent,
-        attachment: [
-          {
-            name: `VIGAM2026_${erp_id}_Pass.png`,
-            content: qrBase64Clean,
-          }
-        ]
       })
     })
 
-    const responseText = await response.text()
-    
-    if (!response.ok) {
-      console.error('Brevo error:', responseText)
-      return res.status(500).json({ 
+    const responseText = await brevoResponse.text()
+
+    if (!brevoResponse.ok) {
+      return new Response(JSON.stringify({ 
         success: false, 
         error: responseText 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    console.log(`Email sent to ${email}`)
-    return res.status(200).json({ success: true })
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
 
   } catch (err) {
-    console.error('Email error:', err)
-    return res.status(500).json({ 
+    return new Response(JSON.stringify({ 
       success: false, 
       error: err.message 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     })
   }
+}
+
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }
+  })
 }
