@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Grain, Particles, GoldBtn, GoldCard, Divider } from '../components/UI'
-
+import { Grain, Particles, Divider } from '../components/UI'
 
 function useCountdown(targetDate) {
   const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
@@ -30,7 +29,34 @@ export default function JuniorSuccess() {
   const [student, setStudent] = useState(null)
   const [saving, setSaving] = useState(true)
   const [rank, setRank] = useState(null)
+  const [emailSent, setEmailSent] = useState(false)
   const t = useCountdown('2026-04-08T18:00:00')
+
+  // Send confirmation email
+  const sendConfirmationEmail = async (studentData, qrValue) => {
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: studentData.name,
+          email: studentData.email,
+          erp_id: studentData.erp_id,
+          branch: studentData.branch,
+          role: studentData.role,
+          superlative: '',
+          qr_data: qrValue,
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setEmailSent(true)
+        toast.success('Confirmation email sent! 📧')
+      }
+    } catch (err) {
+      console.log('Email failed silently:', err)
+    }
+  }
 
   useEffect(() => {
     const register = async () => {
@@ -52,6 +78,7 @@ export default function JuniorSuccess() {
           .from('students')
           .update({
             phone: parsed.phone,
+            email: parsed.email,
             is_registered: true,
             registered_at: new Date().toISOString(),
             registered_rank: registrationRank,
@@ -64,10 +91,17 @@ export default function JuniorSuccess() {
           return
         }
 
+        const updatedStudent = { ...parsed, registered_rank: registrationRank }
+        setStudent(updatedStudent)
+        setSaving(false)
+
+        // Send confirmation email
+        const qrValue = `VIGAM2026|${parsed.erp_id}|${parsed.name}`
+        await sendConfirmationEmail(updatedStudent, qrValue)
+
         // Clear session after 30 seconds
         setTimeout(() => sessionStorage.clear(), 30000)
 
-        setSaving(false)
       } catch (err) {
         toast.error('Something went wrong!')
         setSaving(false)
@@ -75,7 +109,6 @@ export default function JuniorSuccess() {
     }
     register()
   }, [])
-
 
   if (saving) {
     return (
@@ -139,6 +172,21 @@ export default function JuniorSuccess() {
           }}>
             Hey {student.name}! See you at VIGAM 2026 🎬
           </p>
+
+          {/* Email sent indicator */}
+          {emailSent && (
+            <div style={{
+              display: 'inline-block',
+              background: 'rgba(74,222,128,0.1)',
+              border: '1px solid rgba(74,222,128,0.3)',
+              borderRadius: 20, padding: '4px 14px',
+              fontFamily: "'Poppins', sans-serif",
+              color: '#4ade80', fontSize: 11,
+              marginTop: 8,
+            }}>
+              📧 Confirmation email sent!
+            </div>
+          )}
         </div>
 
         {/* Digital Pass */}
@@ -204,7 +252,7 @@ export default function JuniorSuccess() {
             color: '#FFF8E7aa', fontSize: 13,
             textAlign: 'center', marginBottom: 12,
           }}>
-            "{student.erp_id}"
+            ERP: {student.erp_id}
           </div>
 
           <div style={{
@@ -285,46 +333,16 @@ export default function JuniorSuccess() {
           </div>
         </div>
 
-        {/* Volunteer Section */}
-        <div style={{
-          background: 'rgba(96,165,250,0.04)',
-          border: '1.5px solid #60a5fa22',
-          borderRadius: 12, padding: '18px 16px',
-          marginBottom: 14, textAlign: 'left',
-        }}>
-          
-          <p style={{
-            fontFamily: "'Poppins', sans-serif",
-            color: '#FFF8E766', fontSize: 11, lineHeight: 1.6,
-          }}>
-            Join the VIGAM 2026 coordination team!
-            Fill the form to volunteer.
-          </p>
-        </div>
-
+        {/* Email note */}
         <div style={{
           fontFamily: "'Caveat', cursive",
-          color: '#FFF8E766', fontSize: 13,
-          textAlign: 'center', marginTop: 12,
-          cursor: 'pointer',
-        }}
-          onClick={() => {
-            sessionStorage.clear()
-            navigate('/')
-          }}
-        >
-          Thank You →
-        </div>
-
-        <div style={{
-          fontFamily: "'Caveat', cursive",
-          color: '#FFF8E733', fontSize: 20,
-          textAlign: 'center', marginTop: 8,
+          color: '#60a5fa55', fontSize: 13,
+          textAlign: 'center', marginBottom: 16,
         }}>
-          💡 Screenshot your pass! QR coming on WhatsApp soon.
+          📧 Check your institute email for confirmation!
         </div>
 
-        {/* Back to home */}
+        {/* Back to Home */}
         <div
           onClick={() => {
             sessionStorage.clear()
@@ -333,12 +351,13 @@ export default function JuniorSuccess() {
           style={{
             fontFamily: "'Caveat', cursive",
             color: '#60a5fa33', fontSize: 14,
-            textAlign: 'center', marginTop: 16,
+            textAlign: 'center',
             cursor: 'pointer', paddingBottom: 32,
           }}
         >
           ← Back to Home
         </div>
+
       </div>
     </div>
   )
