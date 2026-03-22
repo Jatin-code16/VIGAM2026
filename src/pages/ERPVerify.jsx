@@ -23,12 +23,41 @@ export default function ERPVerify() {
   const [loading, setLoading] = useState(false)
   const [lines, setLines] = useState([])
   const [error, setError] = useState('')
+  const [regOpen, setRegOpen] = useState(true)
+  const [checkingStatus, setCheckingStatus] = useState(true)
 
   useEffect(() => {
     const validBranches = ['IT', 'Cyber', 'DS', 'MCA']
     const branch = sessionStorage.getItem('selectedBranch')
     if (!branch || !validBranches.includes(branch)) navigate('/branch')
+    checkRegistrationStatus()
   }, [])
+
+  const checkRegistrationStatus = async () => {
+    setCheckingStatus(true)
+
+    const deadline = new Date('2026-04-01T23:59:59')
+    const now = new Date()
+
+    if (now > deadline) {
+      setRegOpen(false)
+      setCheckingStatus(false)
+      return
+    }
+
+    try {
+      const { data } = await supabase
+        .from('config')
+        .select('value')
+        .eq('key', 'registration_open')
+        .single()
+      setRegOpen(data?.value === 'true')
+    } catch {
+      setRegOpen(true)
+    }
+
+    setCheckingStatus(false)
+  }
 
   const handleVerify = async () => {
     if (!erpId.trim()) {
@@ -36,18 +65,22 @@ export default function ERPVerify() {
       return
     }
 
+    const deadline = new Date('2026-04-01T23:59:59')
+    if (new Date() > deadline) {
+      toast.error('Registration is closed!')
+      return
+    }
+
     setError('')
     setLoading(true)
     setLines([])
 
-    // Show cinematic loading lines
     LOADING_LINES.forEach((line, i) => {
       setTimeout(() => {
         setLines(prev => [...prev, { text: line, index: i }])
       }, i * 450 + 200)
     })
 
-    // Actually query Supabase in parallel
     setTimeout(async () => {
       try {
         const { data, error } = await supabase
@@ -74,11 +107,10 @@ export default function ERPVerify() {
         if (data.is_registered) {
           setLoading(false)
           setLines([])
-          setError('🎟️ Already registered! Your pass is ready. Check WhatsApp before event.')
+          setError('🎟️ Already registered! Check your institute email for your QR pass.')
           return
         }
 
-        // Detect role
         const role = data.branch === 'MCA'
           ? (data.year >= 2 ? 'senior' : 'junior')
           : (data.year >= 4 ? 'senior' : 'junior')
@@ -111,7 +143,7 @@ export default function ERPVerify() {
               color: '#FFD700', fontSize: 11,
               marginBottom: 10, textAlign: 'center', letterSpacing: 2,
             }}>
-              🎞️ VIGAM MAINFRAME — INITIATING...
+              🎞️ VIGAM MAINFRAME - INITIATING...
             </div>
             <div style={{
               height: 1,
@@ -128,9 +160,98 @@ export default function ERPVerify() {
               </div>
             ))}
             {lines.length < LOADING_LINES.length && (
-              <div style={{ color: '#FFD700', fontSize: 12, animation: 'fadeIn 0.5s infinite alternate' }}>_</div>
+              <div style={{ color: '#FFD700', fontSize: 12 }}>_</div>
             )}
           </GoldCard>
+        </div>
+      </div>
+    )
+  }
+
+  // Registration closed screen
+  if (!checkingStatus && !regOpen) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: 24, position: 'relative', textAlign: 'center',
+      }}>
+        <Particles />
+        <Grain />
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 360 }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>🎬</div>
+          <h1 style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            color: '#FFD700',
+            fontSize: 'clamp(18px, 5vw, 26px)',
+            textShadow: '0 0 20px #FFD70055', marginBottom: 12,
+          }}>
+            Registration Closed!
+          </h1>
+          <div style={{
+            background: 'rgba(192,57,43,0.1)',
+            border: '1px solid #C0392B44',
+            borderRadius: 12, padding: '16px 20px', marginBottom: 20,
+          }}>
+            <p style={{
+              fontFamily: "'Playfair Display', serif",
+              fontStyle: 'italic', color: '#FFF8E7bb',
+              fontSize: 14, lineHeight: 1.8, margin: 0,
+            }}>
+              Registration for VIGAM 2026 is now closed.<br />
+              If you already registered, check your institute email for your QR pass! If you have any questions, feel free to reach out to us. See you at the event! 🎉
+            </p>
+          </div>
+          <div style={{
+            background: 'rgba(255,215,0,0.08)',
+            border: '1px solid #FFD70033',
+            borderRadius: 12, padding: '16px 20px', marginBottom: 20,
+          }}>
+            <p style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              color: '#FFD700', fontSize: 13, marginBottom: 6,
+            }}>
+              📅 April 8, 2026
+            </p>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFF8E777', fontSize: 12, margin: 0,
+            }}>
+              See you at VIGAM 2026! 🎉
+            </p>
+          </div>
+
+          {/* Contact on closed screen too */}
+          <div style={{ marginTop: 8 }}>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFF8E733', fontSize: 11, marginBottom: 8,
+            }}>
+              Need help? Contact the developer!
+            </p>
+            <a href="tel:+916232730128" style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFD70066', fontSize: 11,
+              textDecoration: 'none', display: 'block', marginBottom: 4,
+            }}>
+              📱 +91 6232730128
+            </a>
+            <a href="mailto:jatinnaiknawa2@gmail.com" style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFD70066', fontSize: 11,
+              textDecoration: 'none', display: 'block',
+            }}>
+              📧 jatinnaiknawa2@gmail.com
+            </a>
+          </div>
+
+          <div style={{
+            fontFamily: "'Caveat', cursive",
+            color: '#FFD70044', fontSize: 13, marginTop: 16,
+          }}>
+            Designed & Developed by Jatin Naik 🚀
+          </div>
         </div>
       </div>
     )
@@ -166,7 +287,7 @@ export default function ERPVerify() {
           color: '#FFF8E777', fontSize: 12,
           marginBottom: 28, textAlign: 'center',
         }}>
-          Your ERP ID — your college identity, one last time.
+          Your ERP ID - your college identity, one last time.
         </p>
 
         <GoldInput
@@ -197,6 +318,47 @@ export default function ERPVerify() {
             VERIFY IDENTITY 🎬
           </GoldBtn>
         </div>
+
+        {/* Contact + Credit */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <p style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFF8E733', fontSize: 11, marginBottom: 10,
+              }}>
+                ERP Not Found? Contact us!
+              </p>
+              <a href="https://wa.me/916232730128?text=Hi%20Jatin!%20I%20need%20help%20with%20VIGAM%202026%20registration." 
+              target="_blank"
+              style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 4,
+              }}>
+                
+                WhatsApp: +91 6232730128
+              </a>              
+              <a href="tel:+916232730128" style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 4,
+              }}>
+                📱 +91 6232730128
+              </a>
+              <a href="mailto:jatinnaiknawa2@gmail.com" style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 12,
+              }}>
+                📧 jatinnaiknawa2@gmail.com
+              </a>
+              <p style={{
+                fontFamily: "'Caveat', cursive",
+                color: '#FFD70033', fontSize: 12,
+              }}>
+                Designed & Developed by Jatin Naik 🎬
+                <br />With ❤️ for VIGAM 2026
+              </p>
+            </div>
       </div>
     </div>
   )

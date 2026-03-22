@@ -121,7 +121,6 @@ export async function onRequest(context) {
         </span>
       </p>
     </div>
-
     <div style="text-align:center;">
       <p style="color:#FFD70044;font-size:11px;">
         🎬 VIGAM 2026 - Where Bollywood Meets Binary<br/>

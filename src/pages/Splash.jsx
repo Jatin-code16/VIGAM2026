@@ -8,7 +8,6 @@ export default function Splash() {
   const [phase, setPhase] = useState(0)
   const [count, setCount] = useState(0)
 
-  // Staggered entrance animation
   useEffect(() => {
     const timers = [300, 900, 1600, 2300, 3000].map((t, i) =>
       setTimeout(() => setPhase(i + 1), t)
@@ -16,7 +15,6 @@ export default function Splash() {
     return () => timers.forEach(clearTimeout)
   }, [])
 
-  // Live registration count
   useEffect(() => {
     const fetchCount = async () => {
       const { count } = await supabase
@@ -35,6 +33,8 @@ export default function Splash() {
 
     return () => supabase.removeChannel(channel)
   }, [])
+
+  const registrationClosed = new Date() > new Date('2026-04-01T23:59:59')
 
   return (
     <div style={{
@@ -108,7 +108,7 @@ export default function Splash() {
               background: 'rgba(255,215,0,0.08)',
               border: '1px solid #FFD70033',
               borderRadius: 20, padding: '8px 20px',
-              marginBottom: 24,
+              marginBottom: 16,
             }}>
               <span style={{
                 fontFamily: "'Cinzel Decorative', serif",
@@ -124,11 +124,31 @@ export default function Splash() {
                 STUDENTS REGISTERED
               </span>
             </div>
+
+            {/* Registration closed banner */}
+            {registrationClosed && (
+              <div style={{
+                background: 'rgba(192,57,43,0.15)',
+                border: '1px solid #C0392B44',
+                borderRadius: 12,
+                padding: '10px 20px',
+                marginBottom: 16,
+                fontFamily: "'Poppins', sans-serif",
+                color: '#ff6b6b',
+                fontSize: 12,
+                textAlign: 'center',
+              }}>
+                ⛔ Registration is now closed!<br />
+                <span style={{ color: '#FFF8E766', fontSize: 11 }}>
+                  See you at VIGAM 2026 on April 8th 🎬
+                </span>
+              </div>
+            )}
           </div>
         )}
 
         {/* CTA Button */}
-        {phase >= 5 && (
+        {phase >= 5 && !registrationClosed && (
           <div className="animate-slideUp">
             <GoldBtn onClick={() => navigate('/branch')}>
               🎬 Start Your Last Registration
@@ -139,6 +159,60 @@ export default function Splash() {
               marginTop: 12, letterSpacing: 1,
             }}>
               📅 April 8, 2026
+            </div>
+          </div>
+        )}
+
+        {/* Developer Credit + Contact */}
+        {phase >= 5 && (
+          <div className="animate-fadeIn" style={{
+            marginTop: 28,
+            padding: '16px 20px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid #FFD70022',
+            borderRadius: 12,
+            textAlign: 'center',
+            width: '100%',
+          }}>
+            {/* Contact + Credit */}
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <p style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFF8E733', fontSize: 11, marginBottom: 10,
+              }}>
+                Facing any issue? Contact us!
+              </p>
+              <a href="https://wa.me/916232730128?text=Hi%20Jatin!%20I%20need%20help%20with%20VIGAM%202026%20registration." 
+              target="_blank"
+              style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 4,
+              }}>
+                
+                WhatsApp: +91 6232730128
+              </a>              
+              <a href="tel:+916232730128" style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 4,
+              }}>
+                📱 +91 6232730128
+              </a>
+              <a href="mailto:jatinnaiknawa2@gmail.com" style={{
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70066', fontSize: 11,
+                textDecoration: 'none', display: 'block', marginBottom: 12,
+              }}>
+                📧 jatinnaiknawa2@gmail.com
+              </a>
+              <p style={{
+                fontFamily: "'Caveat', cursive",
+                color: '#FFD70033', fontSize: 12,
+              }}>
+                Designed & Developed by Jatin Naik 🎬
+                <br />With ❤️ for VIGAM 2026
+              </p>
             </div>
           </div>
         )}
