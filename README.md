@@ -332,9 +332,9 @@ Add/edit in `src/constants/superlatives.js`
 
 ## 👨‍💻 Built By
 
-**Jatin Naik** — Final Year Student, Rungta College
+**Jatin Naik** - B.Tech IT Student, Rungta College
 
-Built with ❤️ for VIGAM 2026 — the farewell event that brings Bollywood to Binary!
+Built with ❤️ for VIGAM 2026 - the farewell event that brings Bollywood to Binary!
 
 ---
 
