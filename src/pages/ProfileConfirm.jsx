@@ -160,21 +160,44 @@ export default function ProfileConfirm() {
                   }}>
                     Phone (editable)
                   </div>
-                  <input
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    maxLength={10}
-                    placeholder="10 digit mobile number"
-                    style={{
-                      background: 'rgba(255,215,0,0.07)',
-                      border: '1px solid #FFD70044',
-                      borderRadius: 6,
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    background: 'rgba(255,215,0,0.07)',
+                    border: '1px solid #FFD70044',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                  }}>
+                    <span style={{
                       padding: '7px 10px',
-                      color: '#FFF8E7',
+                      color: '#FFD700',
                       fontFamily: "'Poppins', sans-serif",
-                      fontSize: 13, width: '100%',
-                    }}
-                  />
+                      fontSize: 13,
+                      borderRight: '1px solid #FFD70044',
+                      whiteSpace: 'nowrap',
+                      userSelect: 'none',
+                    }}>
+                      +91
+                    </span>
+                    <input
+                      value={phone.replace('+91', '')}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, '');
+                        setPhone(`+91${digits}`);
+                      }}
+                      maxLength={10}
+                      placeholder="10 digit mobile number"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '7px 10px',
+                        color: '#FFF8E7',
+                        fontFamily: "'Poppins', sans-serif",
+                        fontSize: 13,
+                        width: '100%',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
