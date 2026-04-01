@@ -7,6 +7,8 @@ export default function Splash() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState(0)
   const [count, setCount] = useState(0)
+  const [regOpen, setRegOpen] = useState(true)
+  const [checkingStatus, setCheckingStatus] = useState(true)
 
   useEffect(() => {
     const timers = [300, 900, 1600, 2300, 3000].map((t, i) =>
@@ -34,7 +36,36 @@ export default function Splash() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  const registrationClosed = new Date() > new Date('2026-04-07T23:59:59')
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      setCheckingStatus(true)
+
+      const deadline = new Date('2026-04-07T23:59:59')
+      if (new Date() > deadline) {
+        setRegOpen(false)
+        setCheckingStatus(false)
+        return
+      }
+
+      try {
+        const { data } = await supabase
+          .from('config')
+          .select('value')
+          .eq('key', 'registration_open')
+          .single()
+
+        setRegOpen(data?.value === 'true')
+      } catch {
+        setRegOpen(true)
+      }
+
+      setCheckingStatus(false)
+    }
+
+    checkRegistrationStatus()
+  }, [])
+
+  const registrationClosed = !regOpen
     
 
   return (
@@ -127,7 +158,7 @@ export default function Splash() {
             </div>
 
             {/* Registration closed banner */}
-            {registrationClosed && (
+            {!checkingStatus && registrationClosed && (
               <div style={{
                 background: 'rgba(192,57,43,0.15)',
                 border: '1px solid #C0392B44',
@@ -149,7 +180,7 @@ export default function Splash() {
         )}
 
         {/* CTA Button */}
-        {phase >= 5 && !registrationClosed && (
+        {phase >= 5 && !checkingStatus && !registrationClosed && (
           <div className="animate-slideUp">
             <GoldBtn onClick={() => navigate('/branch')}>
               🎬 Start Your Last Registration
