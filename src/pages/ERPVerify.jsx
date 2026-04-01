@@ -36,7 +36,7 @@ export default function ERPVerify() {
   const checkRegistrationStatus = async () => {
     setCheckingStatus(true)
 
-    const deadline = new Date('2026-04-01T23:59:59')
+    const deadline = new Date('2026-04-07T23:59:59')
     const now = new Date()
 
     if (now > deadline) {

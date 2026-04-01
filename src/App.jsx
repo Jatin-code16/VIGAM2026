@@ -16,6 +16,7 @@ import NotFound from './pages/NotFound'
 // Admin & Checkin
 import AdminDashboard from './admin/AdminDashboard'
 import CheckIn from './checkin/CheckIn'
+import DinnerCheckIn from './checkin/DinnerCheckIn'
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         {/* Admin & Checkin */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/checkin" element={<CheckIn />} />
+        <Route path="/dinner" element={<DinnerCheckIn />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
