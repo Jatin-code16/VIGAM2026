@@ -35,6 +35,7 @@ export default function Splash() {
   }, [])
 
   const registrationClosed = new Date() > new Date('2026-04-07T23:59:59')
+    
 
   return (
     <div style={{
@@ -155,7 +156,7 @@ export default function Splash() {
             </GoldBtn>
             <div style={{
               fontFamily: "'Poppins', sans-serif",
-              color: '#FFF8E733', fontSize: 10,
+              color: '#fff8e793', fontSize: 12,
               marginTop: 12, letterSpacing: 1,
             }}>
               📅 April 8, 2026
@@ -178,7 +179,7 @@ export default function Splash() {
             <div style={{ marginTop: 24, textAlign: 'center' }}>
               <p style={{
                 fontFamily: "'Poppins', sans-serif",
-                color: '#FFF8E733', fontSize: 11, marginBottom: 10,
+                color: '#fff8e777', fontSize: 11, marginBottom: 10,
               }}>
                 Facing any issue? Contact us!
               </p>
@@ -186,7 +187,7 @@ export default function Splash() {
               target="_blank"
               style={{
                 fontFamily: "'Poppins', sans-serif",
-                color: '#FFD70066', fontSize: 11,
+                color: '#ffd90089', fontSize: 12,
                 textDecoration: 'none', display: 'block', marginBottom: 4,
               }}>
                 
@@ -194,21 +195,21 @@ export default function Splash() {
               </a>              
               <a href="tel:+916232730128" style={{
                 fontFamily: "'Poppins', sans-serif",
-                color: '#FFD70066', fontSize: 11,
+                color: '#ffd90080', fontSize: 12,
                 textDecoration: 'none', display: 'block', marginBottom: 4,
               }}>
                 📱 +91 6232730128
               </a>
               <a href="mailto:jatinnaiknawa2@gmail.com" style={{
                 fontFamily: "'Poppins', sans-serif",
-                color: '#FFD70066', fontSize: 11,
+                color: '#ffd90084', fontSize: 12,
                 textDecoration: 'none', display: 'block', marginBottom: 12,
               }}>
                 📧 jatinnaiknawa2@gmail.com
               </a>
               <p style={{
                 fontFamily: "'Caveat', cursive",
-                color: '#FFD70033', fontSize: 12,
+                color: '#ffd90077', fontSize: 12,
               }}>
                 Designed & Developed by Jatin Naik 🎬
                 <br />With ❤️ for VIGAM 2026

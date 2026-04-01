@@ -53,8 +53,9 @@ export default function AdminDashboard() {
       registered: reg.length,
       seniors: reg.filter(s => s.role === 'senior').length,
       juniors: reg.filter(s => s.role === 'junior').length,
-      present: data.filter(s => s.is_present).length,
       volunteers: data.filter(s => s.wants_to_volunteer).length,
+      present: data.filter(s => s.is_present).length,
+      dinner: data.filter(s => s.is_at_dinner).length,
     })
     setLoading(false)
   }
@@ -334,8 +335,9 @@ export default function AdminDashboard() {
             { label: 'Registered', value: stats.registered, color: '#FFD700' },
             { label: 'Seniors', value: stats.seniors, color: '#fb923c' },
             { label: 'Juniors', value: stats.juniors, color: '#60a5fa' },
-            { label: 'Present', value: stats.present, color: '#4ade80' },
             { label: 'Volunteers', value: stats.volunteers, color: '#c084fc' },
+            { label: 'Present', value: stats.present, color: '#4ade80' },
+            { label: 'At Dinner', value: stats.dinner, color: '#fbbf24', bg: 'bg-yellow-400/10' },
           ].map(stat => (
             <div key={stat.label} style={{
               background: 'rgba(255,255,255,0.03)',

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { Grain, Particles, GoldCard, GoldInput } from '../components/UI'
 import QRScanner from './QRScanner'
 
-const DINNER_PASSWORD = 'vigam2026dinner'
+const DINNER_PASSWORD = 'dinner@vigam2026'
 
 export default function DinnerCheckIn() {
   const [authed, setAuthed] = useState(false)
