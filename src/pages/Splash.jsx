@@ -34,7 +34,7 @@ export default function Splash() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  const registrationClosed = new Date() > new Date('2026-04-01T23:59:59')
+  const registrationClosed = new Date() > new Date('2026-04-07T23:59:59')
 
   return (
     <div style={{
