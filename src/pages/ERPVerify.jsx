@@ -65,7 +65,7 @@ export default function ERPVerify() {
       return
     }
 
-    const deadline = new Date('2026-04-01T23:59:59')
+    const deadline = new Date('2026-04-07T23:59:59')
     if (new Date() > deadline) {
       toast.error('Registration is closed!')
       return
