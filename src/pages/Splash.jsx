@@ -40,7 +40,7 @@ export default function Splash() {
     const checkRegistrationStatus = async () => {
       setCheckingStatus(true)
 
-      const deadline = new Date('2026-04-07T23:59:59')
+      const deadline = new Date('2026-04-08T23:59:59')
       if (new Date() > deadline) {
         setRegOpen(false)
         setCheckingStatus(false)
