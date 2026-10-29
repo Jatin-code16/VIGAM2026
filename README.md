@@ -313,23 +313,6 @@ Add/edit in `src/constants/superlatives.js`
 
 ---
 
-## 📅 Event Day Checklist
-
-### Day Before (April 7th)
-- [ ] Download all QRs as ZIP from admin
-- [ ] Download attendance CSV backup
-- [ ] Brief volunteers on `/checkin`
-- [ ] Print attendance sheet backup
-- [ ] Charge power bank for gate device
-
-### Event Day (April 8th)
-- [ ] Open `/checkin` on gate device
-- [ ] Keep `/admin` open for monitoring
-- [ ] Have manual ERP entry ready as fallback
-- [ ] Keep printed list as last resort
-
----
-
 ## 👨‍💻 Built By
 
 **Jatin Naik** - B.Tech IT Student, Rungta College
