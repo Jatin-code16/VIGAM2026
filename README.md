@@ -11,11 +11,11 @@
 
 ## 🌟 Live Demo
 
-**Registration:** https://vigam2026.pages.dev/
+**Registration:** https://vigam-2026.vercel.app/
 
-**Admin Panel:** https://vigam2026.pages.dev/admin
+**Admin Panel:** https://vigam-2026.pages.dev/admin
 
-**Gate Check-in:** https://vigam2026.pages.dev/checkin
+**Gate Check-in:** https://vigam-2026.pages.dev/checkin
 
 ---
 
