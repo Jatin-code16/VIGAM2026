@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { readStudentData } from '../utils/session'
 import toast from 'react-hot-toast'
 import { Grain, Particles, GoldBtn, GoldCard, Divider, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
 
@@ -7,33 +8,27 @@ const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
 
 export default function ProfileConfirm() {
   const navigate = useNavigate()
-  const [student, setStudent] = useState(null)
-  const [phone, setPhone] = useState('')
+  const [student] = useState(readStudentData)
+  const [phone, setPhone] = useState(student?.phone || '')
   const [phase, setPhase] = useState(0)
 
   useEffect(() => {
-    const data = sessionStorage.getItem('studentData')
-    if (!data) { navigate('/branch'); return }
-    const parsed = JSON.parse(data)
-    setStudent(parsed)
-    setPhone(parsed.phone || '')
+    if (!student) { navigate('/branch'); return }
 
     const timers = [400, 1100, 1900].map((t, i) =>
       setTimeout(() => setPhase(i + 1), t)
     )
     return () => timers.forEach(clearTimeout)
-  }, [])
+  }, [student, navigate])
 
   const handleConfirm = () => {
-    if (!phone.trim() || phone.length < 10) {
+    if (!/^\+91[0-9]{10}$/.test(phone)) {
       toast.error('Please enter a valid 10-digit phone number!')
       return
     }
 
-    // Auto generate email from ERP ID
-    const email = `${student.erp_id}@rungta.org`
-
-    const updated = { ...student, phone, email }
+    // Email is filled in server-side from the ERP ID
+    const updated = { ...student, phone }
     sessionStorage.setItem('studentData', JSON.stringify(updated))
 
     if (student.role === 'senior') {
@@ -46,7 +41,7 @@ export default function ProfileConfirm() {
   if (!student) return null
 
   // Auto generated email
-  const autoEmail = `${student?.erp_id}@rungta.org`
+  const autoEmail = `${student.erp_id.toLowerCase()}@rungta.org`
 
   return (
     <div style={{
@@ -138,7 +133,7 @@ export default function ProfileConfirm() {
                     letterSpacing: 2, textTransform: 'uppercase',
                     marginBottom: 2,
                   }}>
-                    Email (auto)
+                    {student.is_demo ? 'Email (demo — nothing is sent)' : 'Email (auto)'}
                   </div>
                   <div style={{
                     fontFamily: "'Playfair Display', serif",

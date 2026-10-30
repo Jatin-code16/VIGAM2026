@@ -3,9 +3,9 @@
 > A full-stack college farewell event registration + QR check-in web app built for ~600 students across IT, Cyber Security, Data Science and MCA branches.
 
 ![VIGAM 2026](https://img.shields.io/badge/VIGAM-2026-FFD700?style=for-the-badge&labelColor=0A0A0A)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&labelColor=0A0A0A)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&labelColor=0A0A0A)
 ![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&labelColor=0A0A0A)
-![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages-F38020?style=for-the-badge&logo=cloudflare&labelColor=0A0A0A)
+![Vercel](https://img.shields.io/badge/Vercel-Hosting-000000?style=for-the-badge&logo=vercel&labelColor=0A0A0A)
 
 ---
 
@@ -17,6 +17,8 @@
 
 **Gate Check-in:** https://vigam-2026.vercel.app/checkin
 
+**Dinner Check-in:** https://vigam-2026.vercel.app/dinner
+
 ---
 
 ## ✨ Features
@@ -24,7 +26,7 @@
 ### 👨‍🎓 Senior Flow
 - ERP ID verification with cinematic loading animation
 - Profile auto-fill from college database
-- Photo upload with Polaroid-style preview
+- Photo upload with Polaroid-style preview (auto-compressed in the browser)
 - Random Bollywood-themed superlative assignment
 - Digital QR pass with countdown timer
 - Automatic email confirmation with QR attached
@@ -35,6 +37,11 @@
 - Digital QR entry pass
 - Automatic email confirmation
 
+### 🎭 Demo Mode
+- "Not a student? Try the demo" on the landing page
+- Full senior or junior flow with any ID
+- Nothing is saved, no email is sent, and the demo QR (`VIGAM2026-DEMO|…`) is rejected at the gate
+
 ### 🖥️ Admin Dashboard
 - Live registration statistics
 - Student table with photos and QR codes
@@ -44,11 +51,12 @@
 - Download all student photos as ZIP
 - Real-time updates via Supabase Realtime
 
-### 🚪 Gate Check-in System
+### 🚪 Gate & 🍽️ Dinner Check-in
 - Camera-based QR scanner
 - Manual ERP ID entry fallback
 - Full-screen result flash (Green/Yellow/Red)
-- Live "students inside" counter
+- Live "inside" / "at dinner" counters
+- Dinner requires a gate check-in first
 - Auto-reset after 3 seconds for next scan
 
 ---
@@ -57,17 +65,41 @@
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| Frontend | React + Vite | UI framework |
-| Styling | Tailwind CSS + Inline styles | Bollywood cinematic theme |
-| Database | Supabase (PostgreSQL) | Student data + Realtime |
-| Storage | Supabase Storage | Photos + QR codes |
-| QR Generation | qrcode.react | Digital pass QR |
+| Frontend | React 19 + Vite | UI framework |
+| Styling | Tailwind CSS v4 + inline styles | Bollywood cinematic theme |
+| Database | Supabase (PostgreSQL) | Student data, RLS, Postgres functions |
+| Auth | Supabase Auth | Staff login (admin / gate / dinner) |
+| Storage | Supabase Storage | Photos + emailed QR images |
+| QR Generation | qrcode.react, qrcode | Digital pass QR |
 | QR Scanning | jsQR | Gate check-in scanner |
-| Animations | Framer Motion | Cinematic transitions |
 | Email | Brevo API | Registration confirmation |
-| Deployment | Cloudflare Pages | Hosting + Serverless functions |
-| CI/CD | GitHub → Cloudflare | Auto deploy on push |
-| WhatsApp | whatsapp-web.js | Bulk QR sending (Azure VM) |
+| Deployment | Vercel | Hosting + serverless function |
+
+---
+
+## 🔐 Security Model
+
+- **The anon key cannot read or write the `students` table.** Row Level Security only lets
+  `admin` staff read it, and nobody can update it directly.
+- **All writes go through Postgres functions** (`supabase/migrations/`):
+  - `lookup_student` returns only name / branch / year / role for the "is this you?" screen
+  - `register_student` registers atomically: one registration per student, unique ranks, server-side validation
+  - `gate_check_in` / `dinner_check_in` are staff-only and atomic, so two scanners can't admit the same pass
+  - `event_counts` returns public aggregate counts
+- **QR passes carry a random token** (`VIGAM2026|<uuid>`), not the ERP ID, so they can't be forged.
+- **Staff log in with Supabase Auth.** Access is controlled by the `staff` table, not by passwords in the code.
+- **The email endpoint only takes an ERP ID.** It reads the recipient from the database with the
+  service-role key and sends at most once, within 15 minutes of registration.
+- **Photo uploads are restricted.** Only a real, unregistered student can upload, only as
+  `<erp_id>_<random uuid>.jpg`, JPEG only, max 2MB. Registration only accepts a photo the student
+  actually uploaded, never an outside URL.
+- **Security headers** in `vercel.json`: Content-Security-Policy, HSTS, `X-Frame-Options: DENY`,
+  `nosniff`, Referrer-Policy, and a Permissions-Policy that allows only the camera. If Supabase is on a
+  custom domain, add it to `img-src` and `connect-src` in the CSP.
+- **CSV export is safe in Excel.** Cells that a spreadsheet would run as formulas are neutralised.
+
+**Who can register:** only ERP IDs on the verified list from the HOD. Registration checks the ID
+against the database, and the confirmation email always goes to the student's own institute inbox.
 
 ---
 
@@ -75,42 +107,39 @@
 
 ```
 vigam2026/
-├── api/                          # Vercel serverless (legacy)
-├── functions/
-│   └── api/
-│       └── send-email.js         # Cloudflare Pages Function
+├── api/
+│   └── send-email.js             # Vercel serverless function (Brevo)
+├── supabase/
+│   └── migrations/               # RLS policies + Postgres functions
 ├── public/
-│   └── _redirects                # Cloudflare routing
+│   └── favicon.svg
 ├── src/
 │   ├── admin/
 │   │   └── AdminDashboard.jsx    # Admin control panel
 │   ├── checkin/
-│   │   ├── CheckIn.jsx           # Gate check-in system
+│   │   ├── ScanStation.jsx       # Shared scanner screen (gate + dinner)
+│   │   ├── CheckIn.jsx           # Gate check-in
+│   │   ├── DinnerCheckIn.jsx     # Dinner check-in
 │   │   └── QRScanner.jsx         # Camera QR scanner
 │   ├── components/
-│   │   ├── Loader.jsx            # Loading component
+│   │   ├── StaffGate.jsx         # Supabase Auth login for staff screens
 │   │   └── UI.jsx                # Shared UI components
 │   ├── constants/
+│   │   ├── event.js              # Dates, branches, QR format
 │   │   └── superlatives.js       # Bollywood superlatives list
-│   ├── pages/
-│   │   ├── Splash.jsx            # Landing screen
-│   │   ├── BranchSelect.jsx      # Branch selection
-│   │   ├── ERPVerify.jsx         # ERP verification
-│   │   ├── ProfileConfirm.jsx    # Profile confirmation
-│   │   ├── PhotoUpload.jsx       # Photo upload
-│   │   ├── Superlative.jsx       # Award reveal
-│   │   ├── SuccessPass.jsx       # Senior QR pass
-│   │   ├── JuniorVolunteer.jsx   # Junior volunteer screen
-│   │   ├── JuniorSuccess.jsx     # Junior QR pass
-│   │   └── NotFound.jsx          # 404 page
+│   ├── hooks/
+│   │   ├── useCountdown.js
+│   │   └── useRegistration.js    # Registers once, caches the pass, sends email
+│   ├── pages/                    # Splash → Branch → Verify → Profile → Photo → Superlative → Pass
 │   ├── utils/
-│   │   └── db.js                 # Supabase query helpers
+│   │   ├── db.js                 # All Supabase calls
+│   │   └── session.js
 │   ├── App.jsx                   # Routes
 │   ├── index.css                 # Global styles + animations
 │   ├── main.jsx                  # Entry point
 │   └── supabaseClient.js         # Supabase connection
-├── .env                          # Environment variables (never commit!)
-├── vite.config.js                # Vite configuration
+├── .env.example
+├── vercel.json
 └── package.json
 ```
 
@@ -127,18 +156,21 @@ CREATE TABLE students (
   phone TEXT,                     -- +91XXXXXXXXXX format
   email TEXT,                     -- erp_id@rungta.org
   year INTEGER NOT NULL,          -- 1-4 for BTech, 1-2 for MCA
-  role TEXT NOT NULL,             -- 'senior' or 'junior'
+  role TEXT NOT NULL DEFAULT 'junior', -- set on registration from branch + year
   photo_url TEXT,                 -- Supabase Storage URL
-  qr_code_url TEXT,               -- Supabase Storage URL
-  superlative TEXT,               -- Bollywood award title
+  superlative TEXT,               -- Bollywood award title (seniors)
   registered_at TIMESTAMP WITH TIME ZONE,
   is_registered BOOLEAN DEFAULT FALSE,
   is_present BOOLEAN DEFAULT FALSE,
   registered_rank INTEGER,
   wants_to_volunteer BOOLEAN DEFAULT FALSE,
   checked_in_at TIMESTAMP WITH TIME ZONE
+  -- added by the migration:
+  -- qr_token UUID UNIQUE, email_sent_at, is_at_dinner, dinner_checked_at
 );
 ```
+
+The migration also creates the `staff` table. Registration has no deadline or on/off switch.
 
 ---
 
@@ -146,158 +178,83 @@ CREATE TABLE students (
 
 ### Prerequisites
 - Node.js v18+
-- Python 3.8+ (for data import)
 - Supabase account
 - Brevo account (email)
-- Cloudflare account
+- Vercel account
 
-### 1. Clone the Repository
+### 1. Clone & install
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/vigam2026.git
 cd vigam2026
-```
-
-### 2. Install Dependencies
-
-```bash
 npm install
 ```
 
-### 3. Set Up Environment Variables
+### 2. Environment variables
 
-Create a `.env` file in the root:
+Copy `.env.example` to `.env` and fill in the two `VITE_` values.
+Set all four server values in **Vercel → Project Settings → Environment Variables**:
 
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+| Variable | Where | Notes |
+|----------|-------|-------|
+| `VITE_SUPABASE_URL` | `.env` + Vercel | Public |
+| `VITE_SUPABASE_ANON_KEY` | `.env` + Vercel | Public |
+| `SUPABASE_URL` | Vercel | Server only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel | Server only. **Never** prefix with `VITE_` |
+| `BREVO_API_KEY` | Vercel | Server only |
+| `BREVO_SENDER_EMAIL` | Vercel | A sender verified in Brevo |
 
-Add to Cloudflare Pages environment variables:
-```
-BREVO_API_KEY=your_brevo_api_key
-```
+### 3. Supabase
 
-### 4. Set Up Supabase
-
-Run this SQL in your Supabase SQL Editor:
+1. Create the `students` table (schema above) and import student data.
+2. Create two **public** storage buckets: `photos` and `qrcodes`.
+3. Run [`supabase/migrations/20261030000000_security_hardening.sql`](supabase/migrations/20261030000000_security_hardening.sql)
+   in the SQL editor. It's safe to run more than once.
+4. In **Storage → Policies**, delete any older policies that let anon update or delete objects.
+5. Create staff accounts (**Authentication → Users → Add user**), then grant roles:
 
 ```sql
--- Create students table
-CREATE TABLE students (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  erp_id TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  branch TEXT NOT NULL,
-  phone TEXT,
-  email TEXT,
-  year INTEGER NOT NULL,
-  role TEXT NOT NULL DEFAULT 'junior',
-  photo_url TEXT,
-  qr_code_url TEXT,
-  superlative TEXT,
-  registered_at TIMESTAMP WITH TIME ZONE,
-  is_registered BOOLEAN DEFAULT FALSE,
-  is_present BOOLEAN DEFAULT FALSE,
-  registered_rank INTEGER,
-  wants_to_volunteer BOOLEAN DEFAULT FALSE,
-  checked_in_at TIMESTAMP WITH TIME ZONE
-);
+insert into staff (user_id, role)
+select id, 'admin' from auth.users where email = 'director@example.com';
 
--- Enable RLS
-ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON students FOR SELECT USING (true);
-CREATE POLICY "Allow public update" ON students FOR UPDATE USING (true);
+insert into staff (user_id, role)
+select id, 'gate' from auth.users where email in ('gate1@example.com', 'gate2@example.com');
 
--- Enable Realtime
-ALTER TABLE students REPLICA IDENTITY FULL;
+insert into staff (user_id, role)
+select id, 'dinner' from auth.users where email = 'dinner@example.com';
 ```
 
-Create storage buckets: `photos` and `qrcodes` (both public)
+Roles: `admin` → dashboard + both scanners · `gate` → `/checkin` · `dinner` → `/dinner`.
+Turning off public sign-ups (**Authentication → Providers → Email**) is recommended, but not
+required: a signed-up user without a `staff` row has no access.
 
-### 5. Import Student Data
+### 4. Run locally
 
 ```bash
-pip install pandas openpyxl supabase
-python clean_data.py      # Clean Excel data first
-python import_students.py # Import to Supabase
+npm run dev        # frontend only (https://localhost:5173, self-signed cert for camera access)
+npx vercel dev     # frontend + /api/send-email
 ```
-
-### 6. Run Locally
-
-```bash
-npm run dev
-```
-
-Open http://localhost:5173
-
----
-
-## 📦 Data Import
-
-The project includes two Python scripts for importing student data:
-
-### `clean_data.py`
-Reads 3 Excel files with different formats, cleans data and exports a single verified Excel with 5 sheets:
-- ✅ Clean Data
-- 📊 Summary
-- ⚠️ Issues
-- 🔁 Duplicates
-- 📱 Phone Check
-
-### `import_students.py`
-Reads the cleaned Excel and imports to Supabase in batches of 50.
 
 ---
 
 ## 🌐 Deployment
 
-### Cloudflare Pages (Recommended)
-
-1. Push code to GitHub
-2. Go to Cloudflare Pages → Create new project
-3. Connect GitHub repository
-4. Build settings:
-   ```
-   Framework: Vite
-   Build command: npm run build
-   Output directory: dist
-   ```
-5. Add environment variables
-6. Deploy!
+Push to GitHub and import the repo in Vercel (framework: Vite, build: `npm run build`, output: `dist`).
+`vercel.json` rewrites every non-`/api` route to `index.html` so deep links like `/admin` work.
 
 **CI/CD:** Every `git push` to `main` triggers automatic redeployment.
 
 ---
 
-## 🔐 Admin Access
-
-| URL | Password |
-|-----|----------|
-| `/admin` | Set in `AdminDashboard.jsx` |
-| `/checkin` | Set in `CheckIn.jsx` |
-
-> ⚠️ Change default passwords before going live!
-
----
-
 ## 📱 QR Code Format
 
-QR codes follow this format:
 ```
-VIGAM2026|ERP_ID|STUDENT_NAME
-Example: VIGAM2026|6605029|Jatin Naik
+VIGAM2026|<qr_token>
+Example: VIGAM2026|11f63f73-f240-4379-a7e2-4756b84d8351
 ```
 
----
-
-## 📧 Email System
-
-Powered by **Brevo API** via Cloudflare Pages Function:
-- Triggered automatically after registration
-- Includes QR code in email body
-- QR attached as PNG file
-- Works for both seniors and juniors
+The token is generated when the student registers. Passes in the old `VIGAM2026|ERP_ID|NAME`
+format are no longer accepted. Staff can still check people in manually by ERP ID.
 
 ---
 

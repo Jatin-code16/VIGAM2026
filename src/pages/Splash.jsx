@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { getEventCounts } from '../utils/db'
+import { startDemo, startRealRegistration } from '../utils/demo'
 import { Grain, Particles, Divider, GoldBtn } from '../components/UI'
 
 export default function Splash() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState(0)
   const [count, setCount] = useState(0)
-  const [regOpen, setRegOpen] = useState(true)
-  const [checkingStatus, setCheckingStatus] = useState(true)
 
   useEffect(() => {
     const timers = [300, 900, 1600, 2300, 3000].map((t, i) =>
@@ -17,56 +16,13 @@ export default function Splash() {
     return () => timers.forEach(clearTimeout)
   }, [])
 
+  // Anon can't subscribe to the students table any more, so poll the public count
   useEffect(() => {
-    const fetchCount = async () => {
-      const { count } = await supabase
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_registered', true)
-      setCount(count || 0)
-    }
+    const fetchCount = async () => setCount((await getEventCounts()).registered)
     fetchCount()
-
-    const channel = supabase
-      .channel('splash-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' },
-        () => fetchCount())
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
+    const id = setInterval(fetchCount, 15000)
+    return () => clearInterval(id)
   }, [])
-
-  useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      setCheckingStatus(true)
-
-      const deadline = new Date('2026-04-08T23:59:59')
-      if (new Date() > deadline) {
-        setRegOpen(false)
-        setCheckingStatus(false)
-        return
-      }
-
-      try {
-        const { data } = await supabase
-          .from('config')
-          .select('value')
-          .eq('key', 'registration_open')
-          .single()
-
-        setRegOpen(data?.value === 'true')
-      } catch {
-        setRegOpen(true)
-      }
-
-      setCheckingStatus(false)
-    }
-
-    checkRegistrationStatus()
-  }, [])
-
-  const registrationClosed = !regOpen
-    
 
   return (
     <div style={{
@@ -156,33 +112,13 @@ export default function Splash() {
                 STUDENTS REGISTERED
               </span>
             </div>
-
-            {/* Registration closed banner */}
-            {!checkingStatus && registrationClosed && (
-              <div style={{
-                background: 'rgba(192,57,43,0.15)',
-                border: '1px solid #C0392B44',
-                borderRadius: 12,
-                padding: '10px 20px',
-                marginBottom: 16,
-                fontFamily: "'Poppins', sans-serif",
-                color: '#ff6b6b',
-                fontSize: 12,
-                textAlign: 'center',
-              }}>
-                ⛔ Registration is now closed!<br />
-                <span style={{ color: '#FFF8E766', fontSize: 11 }}>
-                  See you at VIGAM 2026 on April 8th 🎬
-                </span>
-              </div>
-            )}
           </div>
         )}
 
         {/* CTA Button */}
-        {phase >= 5 && !checkingStatus && !registrationClosed && (
+        {phase >= 5 && (
           <div className="animate-slideUp">
-            <GoldBtn onClick={() => navigate('/branch')}>
+            <GoldBtn onClick={() => startRealRegistration(navigate)}>
               🎬 Start Your Last Registration
             </GoldBtn>
             <div style={{
@@ -192,6 +128,23 @@ export default function Splash() {
             }}>
               📅 April 8, 2026
             </div>
+          </div>
+        )}
+
+        {/* Demo for visitors who aren't students */}
+        {phase >= 5 && (
+          <div className="animate-fadeIn" style={{ marginTop: 14, width: '100%' }}>
+            <button
+              onClick={() => startDemo(navigate)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: "'Poppins', sans-serif",
+                color: '#FFD70099', fontSize: 12, letterSpacing: 1,
+                textDecoration: 'underline',
+              }}
+            >
+              🎭 Not a student? Try the demo
+            </button>
           </div>
         )}
 

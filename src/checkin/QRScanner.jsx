@@ -4,69 +4,70 @@ import jsQR from 'jsqr'
 export default function QRScanner({ onScan }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
-  const animFrameRef = useRef(null)
-  const streamRef = useRef(null)
+  const onScanRef = useRef(onScan)
   const [status, setStatus] = useState('starting')
 
   useEffect(() => {
+    onScanRef.current = onScan
+  }, [onScan])
+
+  useEffect(() => {
+    let cancelled = false
+    let stream = null
+    let animFrame = null
+
+    const scanLoop = () => {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      if (cancelled || !video || !canvas) return
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const code = jsQR(imageData.data, imageData.width, imageData.height)
+
+        if (code) {
+          onScanRef.current(code.data)
+          return // Stop loop after scan!
+        }
+      }
+
+      animFrame = requestAnimationFrame(scanLoop)
+    }
+
+    const startCamera = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        })
+        // Unmounted while waiting for permission → release the camera right away
+        if (cancelled) {
+          stream.getTracks().forEach(t => t.stop())
+          return
+        }
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play()
+          setStatus('scanning')
+          scanLoop()
+        }
+      } catch (err) {
+        console.log('Camera error:', err)
+        if (!cancelled) setStatus('denied')
+      }
+    }
+
     startCamera()
-    return () => stopCamera()
+    return () => {
+      cancelled = true
+      if (animFrame) cancelAnimationFrame(animFrame)
+      if (stream) stream.getTracks().forEach(t => t.stop())
+    }
   }, [])
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      })
-      streamRef.current = stream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-        setStatus('scanning')
-        scanLoop()
-      }
-    } catch (err) {
-      console.log('Camera error:', err)
-      setStatus('denied')
-    }
-  }
-
-  const stopCamera = () => {
-    // Stop animation loop
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current)
-      animFrameRef.current = null
-    }
-    // Stop camera stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
-      streamRef.current = null
-    }
-  }
-
-  const scanLoop = () => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas) return
-
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      const ctx = canvas.getContext('2d')
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const code = jsQR(imageData.data, imageData.width, imageData.height)
-
-      if (code) {
-        onScan(code.data)
-        return // Stop loop after scan!
-      }
-    }
-
-    animFrameRef.current = requestAnimationFrame(scanLoop)
-  }
 
   if (status === 'denied') {
     return (

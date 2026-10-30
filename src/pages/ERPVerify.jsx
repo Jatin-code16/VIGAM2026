@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
+import { lookupStudent } from '../utils/db'
+import { VALID_BRANCHES } from '../constants/event'
+import { createDemoStudent, isDemo } from '../utils/demo'
 import { Grain, Particles, GoldBtn, GoldCard, GoldInput, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
 
 const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
@@ -23,51 +25,31 @@ export default function ERPVerify() {
   const [loading, setLoading] = useState(false)
   const [lines, setLines] = useState([])
   const [error, setError] = useState('')
-  const [regOpen, setRegOpen] = useState(true)
-  const [checkingStatus, setCheckingStatus] = useState(true)
+  const [demo] = useState(isDemo)
+  const [demoRole, setDemoRole] = useState('senior')
 
   useEffect(() => {
-    const validBranches = ['IT', 'Cyber', 'DS', 'MCA']
     const branch = sessionStorage.getItem('selectedBranch')
-    if (!branch || !validBranches.includes(branch)) navigate('/branch')
-    checkRegistrationStatus()
-  }, [])
-
-  const checkRegistrationStatus = async () => {
-    setCheckingStatus(true)
-
-    const deadline = new Date('2026-04-08T23:59:59')
-    const now = new Date()
-
-    if (now > deadline) {
-      setRegOpen(false)
-      setCheckingStatus(false)
-      return
-    }
-
-    try {
-      const { data } = await supabase
-        .from('config')
-        .select('value')
-        .eq('key', 'registration_open')
-        .single()
-      setRegOpen(data?.value === 'true')
-    } catch {
-      setRegOpen(true)
-    }
-
-    setCheckingStatus(false)
-  }
+    if (!branch || !VALID_BRANCHES.includes(branch)) navigate('/branch')
+  }, [navigate])
 
   const handleVerify = async () => {
-    if (!erpId.trim()) {
-      toast.error('Please enter your ERP ID!')
+    if (demo) {
+      setLoading(true)
+      setLines([])
+      LOADING_LINES.forEach((line, i) => {
+        setTimeout(() => setLines(prev => [...prev, { text: line, index: i }]), i * 450 + 200)
+      })
+      setTimeout(() => {
+        const branch = sessionStorage.getItem('selectedBranch')
+        sessionStorage.setItem('studentData', JSON.stringify(createDemoStudent(branch, demoRole, erpId)))
+        navigate('/profile')
+      }, LOADING_LINES.length * 450 + 600)
       return
     }
 
-    const deadline = new Date('2026-04-08T23:59:59')
-    if (new Date() > deadline) {
-      toast.error('Registration is closed!')
+    if (!erpId.trim()) {
+      toast.error('Please enter your ERP ID!')
       return
     }
 
@@ -83,11 +65,7 @@ export default function ERPVerify() {
 
     setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .eq('erp_id', erpId.trim().toUpperCase())
-          .single()
+        const { data, error } = await lookupStudent(erpId)
 
         if (error || !data) {
           setLoading(false)
@@ -111,14 +89,11 @@ export default function ERPVerify() {
           return
         }
 
-        const role = data.branch === 'MCA'
-          ? (data.year >= 2 ? 'senior' : 'junior')
-          : (data.year >= 4 ? 'senior' : 'junior')
-
-        sessionStorage.setItem('studentData', JSON.stringify({ ...data, role }))
+        // role is computed server-side (student_role) and saved on registration
+        sessionStorage.setItem('studentData', JSON.stringify(data))
         navigate('/profile')
 
-      } catch (err) {
+      } catch {
         setLoading(false)
         setLines([])
         setError('Something went wrong. Try again!')
@@ -168,95 +143,6 @@ export default function ERPVerify() {
     )
   }
 
-  // Registration closed screen
-  if (!checkingStatus && !regOpen) {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: 24, position: 'relative', textAlign: 'center',
-      }}>
-        <Particles />
-        <Grain />
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 360 }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>🎬</div>
-          <h1 style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            color: '#FFD700',
-            fontSize: 'clamp(18px, 5vw, 26px)',
-            textShadow: '0 0 20px #FFD70055', marginBottom: 12,
-          }}>
-            Registration Closed!
-          </h1>
-          <div style={{
-            background: 'rgba(192,57,43,0.1)',
-            border: '1px solid #C0392B44',
-            borderRadius: 12, padding: '16px 20px', marginBottom: 20,
-          }}>
-            <p style={{
-              fontFamily: "'Playfair Display', serif",
-              fontStyle: 'italic', color: '#FFF8E7bb',
-              fontSize: 14, lineHeight: 1.8, margin: 0,
-            }}>
-              Registration for VIGAM 2026 is now closed.<br />
-              If you already registered, check your institute email for your QR pass! If you have any questions, feel free to reach out to us. See you at the event! 🎉
-            </p>
-          </div>
-          <div style={{
-            background: 'rgba(255,215,0,0.08)',
-            border: '1px solid #FFD70033',
-            borderRadius: 12, padding: '16px 20px', marginBottom: 20,
-          }}>
-            <p style={{
-              fontFamily: "'Cinzel Decorative', serif",
-              color: '#FFD700', fontSize: 13, marginBottom: 6,
-            }}>
-              📅 April 8, 2026
-            </p>
-            <p style={{
-              fontFamily: "'Poppins', sans-serif",
-              color: '#FFF8E777', fontSize: 12, margin: 0,
-            }}>
-              See you at VIGAM 2026! 🎉
-            </p>
-          </div>
-
-          {/* Contact on closed screen too */}
-          <div style={{ marginTop: 8 }}>
-            <p style={{
-              fontFamily: "'Poppins', sans-serif",
-              color: '#FFF8E733', fontSize: 11, marginBottom: 8,
-            }}>
-              Need help? Contact the developer!
-            </p>
-            <a href="tel:+916232730128" style={{
-              fontFamily: "'Poppins', sans-serif",
-              color: '#FFD70066', fontSize: 11,
-              textDecoration: 'none', display: 'block', marginBottom: 4,
-            }}>
-              📱 +91 6232730128
-            </a>
-            <a href="mailto:jatinnaiknawa2@gmail.com" style={{
-              fontFamily: "'Poppins', sans-serif",
-              color: '#FFD70066', fontSize: 11,
-              textDecoration: 'none', display: 'block',
-            }}>
-              📧 jatinnaiknawa2@gmail.com
-            </a>
-          </div>
-
-          <div style={{
-            fontFamily: "'Caveat', cursive",
-            color: '#FFD70044', fontSize: 13, marginTop: 16,
-          }}>
-            Designed & Developed by Jatin Naik 🚀
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
@@ -290,11 +176,45 @@ export default function ERPVerify() {
           Your ERP ID - your college identity, one last time.
         </p>
 
+        {demo && (
+          <GoldCard style={{ marginBottom: 14, padding: '14px 16px' }}>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFD700', fontSize: 12, marginBottom: 4,
+            }}>
+              🎭 Demo mode
+            </p>
+            <p style={{
+              fontFamily: "'Poppins', sans-serif",
+              color: '#FFF8E777', fontSize: 11, lineHeight: 1.6, marginBottom: 10,
+            }}>
+              Any ID works. Nothing is saved, no email is sent, and the demo pass won't open the gate.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['senior', '🎓 Senior'], ['junior', '⚡ Junior']].map(([role, label]) => (
+                <button
+                  key={role}
+                  onClick={() => setDemoRole(role)}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
+                    fontFamily: "'Poppins', sans-serif", fontSize: 11,
+                    background: demoRole === role ? '#FFD700' : 'rgba(255,215,0,0.08)',
+                    color: demoRole === role ? '#0A0A0A' : '#FFD700',
+                    border: '1px solid #FFD70055',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </GoldCard>
+        )}
+
         <GoldInput
           value={erpId}
           onChange={e => { setErpId(e.target.value); setError('') }}
           onKeyDown={e => e.key === 'Enter' && handleVerify()}
-          placeholder="Enter your ERP ID..."
+          placeholder={demo ? 'Any ID, e.g. DEMO123 (optional)' : 'Enter your ERP ID...'}
           maxLength={15}
         />
 
@@ -327,8 +247,9 @@ export default function ERPVerify() {
               }}>
                 ERP Not Found? Contact us!
               </p>
-              <a href="https://wa.me/916232730128?text=Hi%20Jatin!%20I%20need%20help%20with%20VIGAM%202026%20registration." 
+              <a href="https://wa.me/916232730128?text=Hi%20Jatin!%20I%20need%20help%20with%20VIGAM%202026%20registration."
               target="_blank"
+              rel="noopener noreferrer"
               style={{
                 fontFamily: "'Poppins', sans-serif",
                 color: '#FFD70066', fontSize: 11,

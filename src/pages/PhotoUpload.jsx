@@ -1,28 +1,45 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { readStudentData } from '../utils/session'
 import toast from 'react-hot-toast'
 import { Grain, Particles, GoldBtn, ReelLabel, BackBtn, ProgressDots } from '../components/UI'
 
 const STEPS = ['branch', 'verify', 'profile', 'photo', 'superlative']
+const MAX_SIDE = 1024
+
+// Resize + re-encode as JPEG so the data URL fits in sessionStorage (~5MB limit)
+const compressImage = (file) => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file)
+  const img = new Image()
+  img.onload = () => {
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.width * scale)
+    canvas.height = Math.round(img.height * scale)
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+    URL.revokeObjectURL(url)
+    resolve(canvas.toDataURL('image/jpeg', 0.85))
+  }
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')) }
+  img.src = url
+})
 
 export default function PhotoUpload() {
   const navigate = useNavigate()
-  const [student, setStudent] = useState(null)
+  const [student] = useState(readStudentData)
   const [preview, setPreview] = useState(null)
   const [file, setFile] = useState(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    const data = sessionStorage.getItem('studentData')
-    if (!data) { navigate('/branch'); return }
-    setStudent(JSON.parse(data))
-  }, [])
+    if (!student) navigate('/branch')
+  }, [student, navigate])
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0]
     if (!selected) return
-    if (selected.size > 5 * 1024 * 1024) {
-      toast.error('Photo too large! Max 5MB.')
+    if (selected.size > 15 * 1024 * 1024) {
+      toast.error('Photo too large! Max 15MB.')
       return
     }
     if (!selected.type.startsWith('image/')) {
@@ -35,18 +52,17 @@ export default function PhotoUpload() {
     reader.readAsDataURL(selected)
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!file) {
       toast.error('Please upload your photo first!')
       return
     }
-    const reader = new FileReader()
-    reader.onload = e => {
-      sessionStorage.setItem('photoBase64', e.target.result)
-      sessionStorage.setItem('photoType', file.type)
+    try {
+      sessionStorage.setItem('photoBase64', await compressImage(file))
       navigate('/superlative')
+    } catch {
+      toast.error('Could not process this photo. Try a different one!')
     }
-    reader.readAsDataURL(file)
   }
 
   if (!student) return null
@@ -110,7 +126,7 @@ export default function PhotoUpload() {
               fontFamily: "'Poppins', sans-serif",
               color: '#FFF8E744', fontSize: 10, marginTop: 5,
             }}>
-              Max 5MB — Images only
+              Max 15MB — Images only
             </div>
           </div>
         ) : (

@@ -37,7 +37,7 @@ export default function Superlative() {
     }, 100)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [navigate])
 
   if (!student) return null
 

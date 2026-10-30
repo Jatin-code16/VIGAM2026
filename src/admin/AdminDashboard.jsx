@@ -4,13 +4,35 @@ import { QRCodeCanvas } from 'qrcode.react'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import toast from 'react-hot-toast'
-import { Grain, Particles, GoldBtn, GoldCard, GoldInput, Divider } from '../components/UI'
+import { Grain } from '../components/UI'
+import StaffGate from '../components/StaffGate'
+import { buildQRValue } from '../constants/event'
+import { photoPublicUrl } from '../utils/db'
 
-const ADMIN_PASSWORD = 'jatin@1612'
+// Quote every cell so names/superlatives with commas or quotes don't break columns,
+// and prefix ' on anything a spreadsheet would run as a formula (CSV injection)
+const csvCell = (v) => {
+  let text = String(v ?? '')
+  const isPlainNumber = /^[+-]?\d+$/.test(text) // e.g. +919876543210
+  if (/^[=+\-@\t\r]/.test(text) && !isPlainNumber) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
 
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(false)
-  const [password, setPassword] = useState('')
+  return (
+    <StaffGate
+      allowedRoles={['admin']}
+      icon="🎬"
+      title="Director's Access"
+      subtitle="VIGAM 2026 Control Room"
+      buttonLabel="Enter Control Room →"
+    >
+      <Dashboard />
+    </StaffGate>
+  )
+}
+
+function Dashboard() {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -22,12 +44,6 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('adminAuthed')
-    if (saved === 'true') setAuthed(true)
-  }, [])
-
-  useEffect(() => {
-    if (!authed) return
     fetchStudents()
     const channel = supabase
       .channel('admin-realtime')
@@ -35,9 +51,9 @@ export default function AdminDashboard() {
         () => fetchStudents())
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [authed])
+  }, [])
 
-  const fetchStudents = async () => {
+  async function fetchStudents() {
     setLoading(true)
     const { data, error } = await supabase
       .from('students')
@@ -60,18 +76,8 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true)
-      sessionStorage.setItem('adminAuthed', 'true')
-      toast.success('Welcome, Director! 🎬')
-    } else {
-      toast.error('Wrong password! Retake needed. 🎬')
-    }
-  }
-
   const exportCSV = () => {
-    const headers = ['ERP ID', 'Name', 'Branch', 'Year', 'Role', 'Phone', 'Superlative', 'Registered At', 'Is Present', 'Checked In At']
+    const headers = ['ERP ID', 'Name', 'Branch', 'Year', 'Role', 'Phone', 'Superlative', 'Registered At', 'Is Present', 'Checked In At', 'At Dinner']
     const rows = students
       .filter(s => s.is_registered)
       .map(s => [
@@ -80,8 +86,9 @@ export default function AdminDashboard() {
         s.registered_at ? new Date(s.registered_at).toLocaleString() : '',
         s.is_present ? 'Yes' : 'No',
         s.checked_in_at ? new Date(s.checked_in_at).toLocaleString() : '',
+        s.is_at_dinner ? 'Yes' : 'No',
       ])
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+    const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     saveAs(blob, 'vigam2026_attendance.csv')
     toast.success('CSV exported! ✅')
@@ -90,9 +97,10 @@ export default function AdminDashboard() {
   const downloadQRsAsZip = async () => {
     setDownloading(true)
     toast('Generating QR ZIP... this may take a minute!', { icon: '⏳' })
-    const registered = students.filter(s => s.is_registered)
+    const registered = students.filter(s => s.is_registered && s.qr_token)
     const zip = new JSZip()
     const qrFolder = zip.folder('VIGAM2026_QRs')
+    const QRCodeLib = await import('qrcode')
 
     for (const student of registered) {
       try {
@@ -116,9 +124,8 @@ export default function AdminDashboard() {
         ctx.font = '12px Arial'
         ctx.fillText(`${student.branch} | ${student.erp_id}`, 200, 102)
 
-        const QRCodeLib = await import('qrcode')
         const qrDataUrl = await QRCodeLib.toDataURL(
-          `VIGAM2026|${student.erp_id}|${student.name}`,
+          buildQRValue(student.qr_token),
           { width: 280, margin: 1 }
         )
         const qrImg = new Image()
@@ -136,7 +143,7 @@ export default function AdminDashboard() {
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
         qrFolder.file(`${student.erp_id}_${student.name.replace(/\s/g, '_')}.png`, blob)
-      } catch (err) {
+      } catch {
         console.log(`Failed QR for ${student.erp_id}`)
       }
     }
@@ -164,7 +171,7 @@ export default function AdminDashboard() {
 
     for (const student of registered) {
       try {
-        const response = await fetch(student.photo_url)
+        const response = await fetch(photoPublicUrl(student.photo_url))
         const blob = await response.blob()
         const ext = blob.type.includes('png') ? 'png' : 'jpg'
         photoFolder.file(
@@ -172,7 +179,7 @@ export default function AdminDashboard() {
           blob
         )
         downloaded++
-      } catch (err) {
+      } catch {
         failed++
         console.log(`Failed photo for ${student.erp_id}`)
       }
@@ -180,7 +187,7 @@ export default function AdminDashboard() {
 
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     saveAs(zipBlob, 'VIGAM2026_Photos.zip')
-    toast.success(`Downloaded ${downloaded} photos! ✅`)
+    toast.success(`Downloaded ${downloaded} photos! ✅${failed ? ` (${failed} failed)` : ''}`)
   }
 
   const filteredStudents = students.filter(s => {
@@ -196,55 +203,6 @@ export default function AdminDashboard() {
     if (filter === 'volunteers') return matchesSearch && s.wants_to_volunteer
     return matchesSearch
   })
-
-  // ============================================
-  // LOGIN
-  // ============================================
-  if (!authed) {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#0A0A0A', color: '#FFF8E7',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: 24, position: 'relative',
-      }}>
-        <Particles />
-        <Grain />
-        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 340 }}>
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div style={{ fontSize: 52, marginBottom: 8 }}>🎬</div>
-            <h1 style={{
-              fontFamily: "'Cinzel Decorative', serif",
-              color: '#FFD700', fontSize: 22,
-              textShadow: '0 0 20px #FFD70055', marginBottom: 6,
-            }}>
-              Director's Access
-            </h1>
-            <p style={{
-              fontFamily: "'Caveat', cursive",
-              color: '#FFD70077', fontSize: 14,
-            }}>
-              VIGAM 2026 Control Room
-            </p>
-          </div>
-
-          <GoldCard>
-            <div style={{ marginBottom: 14 }}>
-              <GoldInput
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="Enter director's password..."
-              />
-            </div>
-            <GoldBtn onClick={handleLogin}>
-              Enter Control Room →
-            </GoldBtn>
-          </GoldCard>
-        </div>
-      </div>
-    )
-  }
 
   // ============================================
   // DASHBOARD
@@ -532,7 +490,7 @@ export default function AdminDashboard() {
                     <td style={{ padding: '12px 16px' }}>
                       {student.photo_url ? (
                         <img
-                          src={student.photo_url}
+                          src={photoPublicUrl(student.photo_url)}
                           alt={student.name}
                           style={{
                             width: 36, height: 36,
@@ -557,14 +515,14 @@ export default function AdminDashboard() {
 
                     {/* QR */}
                     <td style={{ padding: '12px 16px' }}>
-                      {student.is_registered ? (
+                      {student.is_registered && student.qr_token ? (
                         <div style={{
                           background: '#FFF8E7',
                           padding: 4, borderRadius: 6,
                           display: 'inline-block',
                         }}>
                           <QRCodeCanvas
-                            value={`VIGAM2026|${student.erp_id}|${student.name}`}
+                            value={buildQRValue(student.qr_token)}
                             size={40}
                           />
                         </div>

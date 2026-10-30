@@ -1,114 +1,14 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
-import toast from 'react-hot-toast'
 import { QRCodeCanvas } from 'qrcode.react'
 import { Grain, Particles, Divider } from '../components/UI'
-
-function useCountdown(targetDate) {
-  const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
-  useEffect(() => {
-    const tick = () => {
-      const diff = Math.max(0, new Date(targetDate) - new Date())
-      setT({
-        d: Math.floor(diff / 86400000),
-        h: Math.floor((diff % 86400000) / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000),
-      })
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [])
-  return t
-}
+import { useCountdown } from '../hooks/useCountdown'
+import { useRegistration } from '../hooks/useRegistration'
+import { EVENT_START } from '../constants/event'
 
 export default function JuniorSuccess() {
   const navigate = useNavigate()
-  const [student, setStudent] = useState(null)
-  const [saving, setSaving] = useState(true)
-  const [rank, setRank] = useState(null)
-  const [emailSent, setEmailSent] = useState(false)
-  const t = useCountdown('2026-04-08T18:00:00')
-
-  // Send confirmation email
-  const sendConfirmationEmail = async (studentData, qrValue) => {
-    try {
-      const response = await fetch('https://vigam2026.pages.dev/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: studentData.name,
-          email: studentData.email,
-          erp_id: studentData.erp_id,
-          branch: studentData.branch,
-          role: studentData.role,
-          superlative: '',
-          qr_data: qrValue,
-        })
-      })
-      const data = await response.json()
-      if (data.success) {
-        setEmailSent(true)
-        toast.success('Confirmation email sent! 📧')
-      }
-    } catch (err) {
-      console.log('Email failed silently:', err)
-    }
-  }
-
-  useEffect(() => {
-    const register = async () => {
-      const data = sessionStorage.getItem('studentData')
-      if (!data) { navigate('/branch'); return }
-      const parsed = JSON.parse(data)
-      setStudent(parsed)
-
-      try {
-        // Get registration rank
-        const { count } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_registered', true)
-        const registrationRank = (count || 0) + 1
-        setRank(registrationRank)
-
-        const { error } = await supabase
-          .from('students')
-          .update({
-            phone: parsed.phone,
-            email: parsed.email,
-            is_registered: true,
-            registered_at: new Date().toISOString(),
-            registered_rank: registrationRank,
-          })
-          .eq('erp_id', parsed.erp_id)
-
-        if (error) {
-          toast.error('Registration failed!')
-          navigate('/profile')
-          return
-        }
-
-        const updatedStudent = { ...parsed, registered_rank: registrationRank }
-        setStudent(updatedStudent)
-        setSaving(false)
-
-        // Send confirmation email
-        const qrValue = `VIGAM2026|${parsed.erp_id}|${parsed.name}`
-        await sendConfirmationEmail(updatedStudent, qrValue)
-
-        // Clear session after 30 seconds
-        setTimeout(() => sessionStorage.clear(), 30000)
-
-      } catch (err) {
-        toast.error('Something went wrong!')
-        setSaving(false)
-      }
-    }
-    register()
-  }, [])
+  const { student, saving, rank, qrValue, emailSent, isDemo } = useRegistration({ failPath: '/profile' })
+  const t = useCountdown(EVENT_START)
 
   if (saving) {
     return (
@@ -136,7 +36,6 @@ export default function JuniorSuccess() {
 
   if (!student) return null
 
-  const qrValue = `VIGAM2026|${student.erp_id}|${student.name}`
 
   return (
     <div style={{
@@ -202,7 +101,7 @@ export default function JuniorSuccess() {
             fontFamily: "'Cinzel Decorative', serif",
             color: '#60a5fa', fontSize: 11, letterSpacing: 2,
           }}>
-            🎬 VIGAM 2026 - ENTRY PASS
+            {isDemo ? '🎭 DEMO PASS — NOT VALID FOR ENTRY' : '🎬 VIGAM 2026 - ENTRY PASS'}
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",
@@ -245,7 +144,7 @@ export default function JuniorSuccess() {
             color: '#60a5fa99', fontSize: 11,
             textAlign: 'center', marginBottom: 4,
           }}>
-            {student.branch} • Year {student.year} • #{rank}
+            {student.branch} • Year {student.year} • {isDemo ? 'Demo' : `#${rank}`}
           </div>
           <div style={{
             fontFamily: "'Caveat', cursive",
@@ -339,10 +238,21 @@ export default function JuniorSuccess() {
           color: '#FFD70055', fontSize: 13,
           textAlign: 'center', marginBottom: 16,
         }}>
-          📧 Check your institute email!<br/>
-          <span style={{ fontSize: 11, color: '#FFD70033' }}>
-            If not found, check spam folder and mark as "Not Spam"
-          </span>
+          {isDemo ? (
+            <>
+              🎭 This was a demo — nothing was saved and no email was sent.<br/>
+              <span style={{ fontSize: 11, color: '#FFD70033' }}>
+                The demo QR is rejected at the gate.
+              </span>
+            </>
+          ) : (
+            <>
+              📧 Check your institute email!<br/>
+              <span style={{ fontSize: 11, color: '#FFD70033' }}>
+                If not found, check spam folder and mark as "Not Spam"
+              </span>
+            </>
+          )}
         </div>
 
         {/* Back to Home */}

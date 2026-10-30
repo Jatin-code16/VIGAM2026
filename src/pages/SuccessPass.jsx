@@ -1,142 +1,14 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
-import { supabase } from '../supabaseClient'
-import toast from 'react-hot-toast'
 import { Grain, Particles, Divider } from '../components/UI'
-
-function useCountdown(targetDate) {
-  const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
-  useEffect(() => {
-    const tick = () => {
-      const diff = Math.max(0, new Date(targetDate) - new Date())
-      setT({
-        d: Math.floor(diff / 86400000),
-        h: Math.floor((diff % 86400000) / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000),
-      })
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [])
-  return t
-}
+import { useCountdown } from '../hooks/useCountdown'
+import { useRegistration } from '../hooks/useRegistration'
+import { EVENT_START } from '../constants/event'
 
 export default function SuccessPass() {
   const navigate = useNavigate()
-  const [student, setStudent] = useState(null)
-  const [saving, setSaving] = useState(true)
-  const [rank, setRank] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
-  const [emailSent, setEmailSent] = useState(false)
-  const t = useCountdown('2026-04-08T18:00:00')
-
-  // Send confirmation email
-  const sendConfirmationEmail = async (studentData, qrValue) => {
-    try {
-      const response = await fetch('https://vigam2026.pages.dev/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: studentData.name,
-          email: studentData.email,
-          erp_id: studentData.erp_id,
-          branch: studentData.branch,
-          role: studentData.role,
-          superlative: studentData.superlative || '',
-          qr_data: qrValue,
-        })
-      })
-      const data = await response.json()
-      if (data.success) {
-        setEmailSent(true)
-        toast.success('Confirmation email sent! 📧')
-      }
-    } catch (err) {
-      console.log('Email failed silently:', err)
-    }
-  }
-
-  useEffect(() => {
-    const register = async () => {
-      const data = sessionStorage.getItem('studentData')
-      const photoBase64 = sessionStorage.getItem('photoBase64')
-      const photoType = sessionStorage.getItem('photoType')
-      if (!data) { navigate('/branch'); return }
-
-      const parsed = JSON.parse(data)
-      setStudent(parsed)
-      if (photoBase64) setPhotoPreview(photoBase64)
-
-      try {
-        // Upload photo
-        let photoUrl = null
-        if (photoBase64) {
-          const base64Data = photoBase64.split(',')[1]
-          const byteCharacters = atob(base64Data)
-          const byteArray = new Uint8Array(byteCharacters.length)
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteArray[i] = byteCharacters.charCodeAt(i)
-          }
-          const blob = new Blob([byteArray], { type: photoType })
-          const fileName = `${parsed.erp_id}_${Date.now()}.jpg`
-          const { error: uploadError } = await supabase.storage
-            .from('photos').upload(fileName, blob, { contentType: photoType })
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from('photos').getPublicUrl(fileName)
-            photoUrl = urlData.publicUrl
-          }
-        }
-
-        // Get rank
-        const { count } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_registered', true)
-        const registrationRank = (count || 0) + 1
-        setRank(registrationRank)
-
-        // Save to DB
-        const { error: updateError } = await supabase
-          .from('students')
-          .update({
-            photo_url: photoUrl,
-            superlative: parsed.superlative,
-            phone: parsed.phone,
-            email: parsed.email,
-            is_registered: true,
-            registered_at: new Date().toISOString(),
-            registered_rank: registrationRank,
-          })
-          .eq('erp_id', parsed.erp_id)
-
-        if (updateError) {
-          toast.error('Registration failed! Please try again.')
-          navigate('/photo')
-          return
-        }
-
-        const updatedStudent = { ...parsed, registered_rank: registrationRank }
-        setStudent(updatedStudent)
-        setSaving(false)
-
-        // Send confirmation email
-        const qrValue = `VIGAM2026|${parsed.erp_id}|${parsed.name}`
-        await sendConfirmationEmail(updatedStudent, qrValue)
-
-        // Clear session after 30 seconds
-        setTimeout(() => sessionStorage.clear(), 30000)
-
-      } catch (err) {
-        toast.error('Something went wrong!')
-        setSaving(false)
-      }
-    }
-    register()
-  }, [])
+  const { student, saving, rank, qrValue, photoPreview, emailSent, isDemo } = useRegistration({ failPath: '/photo' })
+  const t = useCountdown(EVENT_START)
 
   if (saving) {
     return (
@@ -173,7 +45,6 @@ export default function SuccessPass() {
 
   if (!student) return null
 
-  const qrValue = `VIGAM2026|${student.erp_id}|${student.name}`
 
   return (
     <div style={{
@@ -236,7 +107,7 @@ export default function SuccessPass() {
             fontFamily: "'Cinzel Decorative', serif",
             color: '#FFD700', fontSize: 11, letterSpacing: 2,
           }}>
-            🎬 VIGAM 2026 - OFFICIAL PASS
+            {isDemo ? '🎭 DEMO PASS — NOT VALID FOR ENTRY' : '🎬 VIGAM 2026 - OFFICIAL PASS'}
           </div>
           <div style={{
             fontFamily: "'Poppins', sans-serif",
@@ -285,7 +156,7 @@ export default function SuccessPass() {
             color: '#FFD70099', fontSize: 11,
             textAlign: 'center',
           }}>
-            {student.branch} • #{rank} to Register
+            {student.branch} • {isDemo ? 'Demo' : `#${rank} to Register`}
           </div>
 
           {/* Superlative */}
@@ -379,10 +250,21 @@ export default function SuccessPass() {
           color: '#FFD70055', fontSize: 13,
           textAlign: 'center', marginBottom: 16,
         }}>
-          📧 Check your institute email!<br/>
-          <span style={{ fontSize: 11, color: '#FFD70033' }}>
-            If not found, check spam folder and mark as "Not Spam"
-          </span>
+          {isDemo ? (
+            <>
+              🎭 This was a demo — nothing was saved and no email was sent.<br/>
+              <span style={{ fontSize: 11, color: '#FFD70033' }}>
+                The demo QR is rejected at the gate.
+              </span>
+            </>
+          ) : (
+            <>
+              📧 Check your institute email!<br/>
+              <span style={{ fontSize: 11, color: '#FFD70033' }}>
+                If not found, check spam folder and mark as "Not Spam"
+              </span>
+            </>
+          )}
         </div>
 
         {/* Back to Home */}

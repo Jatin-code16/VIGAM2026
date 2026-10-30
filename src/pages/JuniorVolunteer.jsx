@@ -1,37 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { readStudentData } from '../utils/session'
+import toast from 'react-hot-toast'
 import { Grain, Particles, GoldCard } from '../components/UI'
 
 const GOOGLE_FORM_URL = 'https://forms.gle/KSp77PTp8nu98Hgk7'
 
 export default function JuniorVolunteer() {
   const navigate = useNavigate()
-  const [student, setStudent] = useState(null)
+  const [student] = useState(readStudentData)
 
   useEffect(() => {
-    const data = sessionStorage.getItem('studentData')
-    if (!data) { navigate('/branch'); return }
-    setStudent(JSON.parse(data))
-  }, [])
+    if (!student) navigate('/branch')
+  }, [student, navigate])
 
-  const handleYes = async () => {
-    // Save volunteer interest
-    await supabase
-      .from('students')
-      .update({ wants_to_volunteer: true })
-      .eq('erp_id', student.erp_id)
-
-    // Open Google Form in new tab
-    window.open(GOOGLE_FORM_URL, '_blank')
-
-    // Go to pass
+  // Volunteer interest is saved along with the registration on the next screen
+  const proceed = (wantsToVolunteer) => {
+    sessionStorage.setItem('studentData', JSON.stringify({ ...student, wants_to_volunteer: wantsToVolunteer }))
     navigate('/junior-success')
   }
 
-  const handleNo = () => {
-    navigate('/junior-success')
+  const handleYes = () => {
+    // Open Google Form in new tab (not for demo visitors — it's the real sign-up form)
+    if (student.is_demo) toast('Demo: the volunteer form would open here', { icon: '🎭' })
+    else window.open(GOOGLE_FORM_URL, '_blank', 'noopener')
+    proceed(true)
   }
+
+  const handleNo = () => proceed(false)
 
   if (!student) return null
 

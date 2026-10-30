@@ -201,7 +201,7 @@ export function GoldInput({ value, onChange, onKeyDown, placeholder, type = 'tex
         fontFamily: "'Poppins', sans-serif",
         fontSize: 15,
         letterSpacing: 2,
-        textTransform: type === 'password' ? 'none' : 'uppercase',
+        textTransform: ['password', 'email'].includes(type) ? 'none' : 'uppercase',
       }}
     />
   )
