@@ -9,6 +9,30 @@
 -- ============================================
 
 -- --------------------------------------------
+-- Students table (created only if missing, e.g. on a fresh project).
+-- Import the HOD's verified ERP list into it afterwards.
+-- --------------------------------------------
+create table if not exists students (
+  id uuid default gen_random_uuid() primary key,
+  erp_id text unique not null,
+  name text not null,
+  branch text not null,             -- IT, Cyber, DS, MCA
+  phone text,
+  email text,
+  year integer not null,
+  role text not null default 'junior',
+  photo_url text,
+  qr_code_url text,
+  superlative text,
+  registered_at timestamptz,
+  is_registered boolean default false,
+  is_present boolean default false,
+  registered_rank integer,
+  wants_to_volunteer boolean default false,
+  checked_in_at timestamptz
+);
+
+-- --------------------------------------------
 -- Columns
 -- --------------------------------------------
 alter table students add column if not exists qr_token uuid unique;
@@ -294,9 +318,11 @@ create policy "Anyone can upload photos" on storage.objects
   for insert to anon, authenticated
   with check (bucket_id = 'photos' and can_upload_photo(name));
 
-update storage.buckets
-  set file_size_limit = 2097152, allowed_mime_types = array['image/jpeg']
-  where id = 'photos';
-update storage.buckets
-  set file_size_limit = 524288, allowed_mime_types = array['image/png']
-  where id = 'qrcodes';
+-- Create the buckets if missing (public = files readable by URL, not listable)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
+  ('photos',  'photos',  true, 2097152, array['image/jpeg']),
+  ('qrcodes', 'qrcodes', true, 524288,  array['image/png'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;

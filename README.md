@@ -206,12 +206,13 @@ Set all four server values in **Vercel → Project Settings → Environment Vari
 
 ### 3. Supabase
 
-1. Create the `students` table (schema above) and import student data.
-2. Create two **public** storage buckets: `photos` and `qrcodes`.
-3. Run [`supabase/migrations/20261030000000_security_hardening.sql`](supabase/migrations/20261030000000_security_hardening.sql)
-   in the SQL editor. It's safe to run more than once.
-4. In **Storage → Policies**, delete any older policies that let anon update or delete objects.
-5. Create staff accounts (**Authentication → Users → Add user**), then grant roles:
+1. Run [`supabase/migrations/20261030000000_security_hardening.sql`](supabase/migrations/20261030000000_security_hardening.sql)
+   in the SQL editor. It creates the `students` table (if missing), the `staff` table, and the
+   `photos` / `qrcodes` buckets. It's safe to run more than once.
+2. Import the HOD's verified student list into `students` (`erp_id`, `name`, `branch`, `year`,
+   optionally `email`). Table Editor → students → Insert → Import CSV works.
+3. In **Storage → Policies**, delete any older policies that let anon update or delete objects.
+4. Create staff accounts (**Authentication → Users → Add user**), then grant roles:
 
 ```sql
 insert into staff (user_id, role)
